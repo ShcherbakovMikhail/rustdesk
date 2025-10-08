@@ -2174,6 +2174,7 @@ class __PrinterState extends State<_Printer> {
   }
 }
 
+// shcherbakov.m - поправим окно О программе
 class _About extends StatefulWidget {
   const _About({Key? key}) : super(key: key);
 
@@ -2212,7 +2213,7 @@ class _AboutState extends State<_About> {
                 height: 8.0,
               ),
               SelectionArea(
-                  child: Text('${translate('Version')}: $version')
+                  child: Text('${translate('Version')}: $version - Sintec Edition')
                       .marginSymmetric(vertical: 4.0)),
               SelectionArea(
                   child: Text('${translate('Build Date')}: $buildDate')
@@ -2221,17 +2222,17 @@ class _AboutState extends State<_About> {
                 SelectionArea(
                     child: Text('${translate('Fingerprint')}: $fingerprint')
                         .marginSymmetric(vertical: 4.0)),
+              //InkWell(
+              //    onTap: () {
+              //      launchUrlString('https://rustdesk.com/privacy.html');
+              //    },
+              //    child: Text(
+              //      translate('Privacy Statement'),
+              //      style: linkStyle,
+              //    ).marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com/privacy.html');
-                  },
-                  child: Text(
-                    translate('Privacy Statement'),
-                    style: linkStyle,
-                  ).marginSymmetric(vertical: 4.0)),
-              InkWell(
-                  onTap: () {
-                    launchUrlString('https://rustdesk.com');
+                    launchUrlString('https://sintec.ru');
                   },
                   child: Text(
                     translate('Website'),
@@ -2249,7 +2250,7 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Ltd.\n$license',
+                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Sintec LLC.\n$license',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(
