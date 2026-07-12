@@ -16,6 +16,8 @@ fn main() {
 
     if args.get(1).map(String::as_str) == Some("--server") {
         run_agent_server();
+    } else if args.get(1).map(String::as_str) == Some("--get-id") {
+        write_agent_id();
     } else {
         run_agent_service();
     }
@@ -44,6 +46,23 @@ fn run_agent_server() {
     hbb_common::log::info!("Starting RustDesk Agent host server");
 
     start_server(true, false);
+
+    common::global_clean();
+}
+
+#[cfg(target_os = "windows")]
+fn write_agent_id() {
+    if !common::global_init() {
+        return;
+    }
+
+    let id = hbb_common::config::Config::get_id();
+
+    let path = std::env::temp_dir().join("rustdesk-agent-id.txt");
+
+    let content = format!("RustDesk Agent ID: {}\r\n", id);
+
+    let _ = std::fs::write(&path, content);
 
     common::global_clean();
 }
