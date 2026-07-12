@@ -34,8 +34,6 @@ fn run_agent_server() {
         return;
     }
 
-    load_custom_client();
-
     if !platform::windows::bootstrap() {
         hbb_common::log::error!("RustDesk Agent Windows bootstrap failed");
         common::global_clean();
@@ -45,11 +43,6 @@ fn run_agent_server() {
     hbb_common::init_log(false, "agent-server");
     hbb_common::log::info!("Starting RustDesk Agent host server");
 
-    /*
-     * true означает, что процесс является основным host server.
-     * Функция запускает IPC, ввод, захват экрана и RendezvousMediator.
-     * Она работает до остановки процесса.
-     */
     start_server(true, false);
 
     common::global_clean();
