@@ -520,19 +520,40 @@ fn fix_cursor_mask(
     return true;
 }
 
+const AGENT_SERVICE_NAME: &str = "RustDeskAgent";
+
 define_windows_service!(ffi_service_main, service_main);
+define_windows_service!(ffi_agent_service_main, agent_service_main);
 
 fn service_main(arguments: Vec<OsString>) {
-    if let Err(e) = run_service(arguments) {
+    let service_name = crate::get_app_name();
+
+    if let Err(e) = run_service(arguments, &service_name) {
         log::error!("run_service failed: {}", e);
     }
 }
 
+fn agent_service_main(arguments: Vec<OsString>) {
+    if let Err(e) = run_service(arguments, AGENT_SERVICE_NAME) {
+        log::error!("run_agent_service failed: {}", e);
+    }
+}
+
 pub fn start_os_service() {
+    let service_name = crate::get_app_name();
+
     if let Err(e) =
-        windows_service::service_dispatcher::start(crate::get_app_name(), ffi_service_main)
+        windows_service::service_dispatcher::start(&service_name, ffi_service_main)
     {
         log::error!("start_service failed: {}", e);
+    }
+}
+
+pub fn start_agent_os_service() {
+    if let Err(e) =
+        windows_service::service_dispatcher::start(AGENT_SERVICE_NAME, ffi_agent_service_main)
+    {
+        log::error!("start_agent_service failed: {}", e);
     }
 }
 
@@ -637,7 +658,7 @@ extern "system" {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn run_service(_arguments: Vec<OsString>) -> ResultType<()> {
+async fn run_service(_arguments: Vec<OsString>, service_name: &str,) -> ResultType<()> {
     let event_handler = move |control_event| -> ServiceControlHandlerResult {
         log::info!("Got service control event: {:?}", control_event);
         match control_event {
@@ -651,7 +672,7 @@ async fn run_service(_arguments: Vec<OsString>) -> ResultType<()> {
     };
 
     // Register system service event handler
-    let status_handle = service_control_handler::register(crate::get_app_name(), event_handler)?;
+    let status_handle = service_control_handler::register(service_name, event_handler)?;
 
     let next_status = ServiceStatus {
         // Should match the one from system service registry
