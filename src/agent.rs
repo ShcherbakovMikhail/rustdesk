@@ -1,4 +1,3 @@
-```rust
 use librustdesk::*;
 
 /// Точка входа для систем, отличных от Windows.
