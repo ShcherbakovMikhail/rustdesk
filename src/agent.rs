@@ -28,35 +28,42 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     match args.get(1).map(String::as_str) {
+        None => run_agent_service(),
+
         Some("--server") => run_agent_server(),
-    
+
         Some("--get-id") => print_agent_id(),
-    
+
         Some("--set-password") => {
             let Some(password) = args.get(2) else {
                 eprintln!("Password is required.");
                 std::process::exit(30);
             };
-    
+
             set_agent_password(password);
         }
-    
+
         Some("--version") => {
             println!("{}", VERSION);
         }
-    
+
         Some("--help") | Some("-h") | Some("/?") => {
             print_help();
         }
-    
-        Some(unknown_argument) => {
-            eprintln!("Unknown argument: {}", unknown_argument);
-            eprintln!();
-            print_help();
-            std::process::exit(2);
-        }
-    
-        None => run_agent_service(),
+
+        /*
+         * Внутренние режимы RustDesk.
+         *
+         * В частности:
+         * --cm
+         * --cm-no-ui
+         * --terminal-helper
+         * --check-hwcodec-config
+         *
+         * Их нельзя отклонять как неизвестные, поскольку сервер
+         * запускает такие процессы самостоятельно.
+         */
+        Some(_) => run_rustdesk_internal_command(),
     }
 }
 
@@ -204,6 +211,15 @@ fn set_agent_password(password: &str) {
             common::global_clean();
             std::process::exit(33);
         }
+    }
+
+    common::global_clean();
+}
+
+#[cfg(target_os = "windows")]
+fn run_rustdesk_internal_command() {
+    if let Some(args) = core_main::core_main().as_mut() {
+        ui::start(args);
     }
 
     common::global_clean();
