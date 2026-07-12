@@ -1,0 +1,104 @@
+name: Build RustDesk Agent for Windows
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  VCPKG_ROOT: C:\vcpkg
+  VCPKG_DEFAULT_TRIPLET: x64-windows-static
+  VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
+  VCPKG_COMMIT_ID: 120deac3062162151622ca4860575a33844ba10b
+  VCPKG_BINARY_SOURCES: clear;x-gha,readwrite
+
+jobs:
+  build-agent:
+    name: Build rustdesk-agent.exe
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable(
+              'ACTIONS_CACHE_URL',
+              process.env.ACTIONS_CACHE_URL || ''
+            );
+            core.exportVariable(
+              'ACTIONS_RUNTIME_TOKEN',
+              process.env.ACTIONS_RUNTIME_TOKEN || ''
+            );
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.85"
+          target: x86_64-pc-windows-msvc
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rustdesk-agent-windows-x64
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install native dependencies
+        shell: bash
+        run: |
+          "$VCPKG_ROOT/vcpkg" install \
+            --triplet x64-windows-static \
+            --x-install-root="$VCPKG_ROOT/installed"
+
+      - name: Prepare embedded Sciter resources
+        shell: bash
+        run: |
+          python3 res/inline-sciter.py
+
+      - name: Build rustdesk-agent.exe
+        shell: bash
+        run: |
+          cargo build \
+            --locked \
+            --release \
+            --bin rustdesk-agent \
+            --features inline
+
+      - name: Check build result
+        shell: pwsh
+        run: |
+          $file = "target\release\rustdesk-agent.exe"
+
+          if (!(Test-Path $file)) {
+              throw "rustdesk-agent.exe was not created"
+          }
+
+          Get-Item $file | Format-List Name, Length, FullName
+
+      - name: Prepare artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          Copy-Item `
+            "target\release\rustdesk-agent.exe" `
+            "artifact\rustdesk-agent.exe"
+
+      - name: Upload rustdesk-agent.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdesk-agent-windows-x64
+          path: artifact/rustdesk-agent.exe
+          if-no-files-found: error
+          retention-days: 30
