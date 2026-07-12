@@ -189,14 +189,14 @@ fn print_help() {
     println!("RustDesk Enterprise Agent");
     println!();
     println!("Usage:");
-    println!("  rustdesk-agent.exe              Run as Windows service");
-    println!("  rustdesk-agent.exe --server     Run the RustDesk host server");
-    println!("  rustdesk-agent.exe --get-id     Print the RustDesk ID");
-    println!("  rustdesk-agent.exe --version    Print the application version");
-    println!("  rustdesk-agent.exe --set-password PASSWORD");
-    println!("  rustdesk-agent.exe --help       Show this help");
+    println!("  rustdesk-agent.exe                          Run as Windows service");
+    println!("  rustdesk-agent.exe --server                 Run the RustDesk host server");
+    println!("  rustdesk-agent.exe --get-id                 Print the RustDesk ID");
+    println!("  rustdesk-agent.exe --set-password PASSWORD  Set permanent password");
+    println!("  rustdesk-agent.exe --version                Print the application version");
+    println!("  rustdesk-agent.exe --help                   Show this help");
 }
-```
+
 #[cfg(target_os = "windows")]
 fn set_agent_password(password: &str) {
     if password.trim().is_empty() {
