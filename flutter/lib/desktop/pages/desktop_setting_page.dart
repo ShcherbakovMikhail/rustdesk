@@ -76,7 +76,8 @@ class DesktopSettingPage extends StatefulWidget {
     if (!bind.isIncomingOnly()) SettingsTabKey.display,
     if (!isWeb && !bind.isIncomingOnly() && bind.pluginFeatureIsEnabled())
       SettingsTabKey.plugin,
-    if (!bind.isDisableAccount()) SettingsTabKey.account,
+    // shcherbakov.m - Скрываем вкладку Аккаунт
+    //if (!bind.isDisableAccount()) SettingsTabKey.account,
     if (isWindows &&
         bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
       SettingsTabKey.printer,
@@ -2454,6 +2455,7 @@ class _About extends StatefulWidget {
   State<_About> createState() => _AboutState();
 }
 
+// shcherbakov.m - поправим окно О программе
 class _AboutState extends State<_About> {
   @override
   Widget build(BuildContext context) {
@@ -2488,7 +2490,7 @@ class _AboutState extends State<_About> {
                 height: 8.0,
               ),
               SelectionArea(
-                  child: Text('${translate('Version')}: $version')
+                  child: Text('${translate('Version')}: $version - Sintec LLC Edition')
                       .marginSymmetric(vertical: 4.0)),
               SelectionArea(
                   child: Text('${translate('Build Date')}: $buildDate')
@@ -2500,17 +2502,17 @@ class _AboutState extends State<_About> {
               SelectionArea(
                   child: Text('${translate('ID')}: $myId')
                       .marginSymmetric(vertical: 4.0)),
+              //InkWell(
+              //    onTap: () {
+              //      launchUrlString('https://rustdesk.com/privacy.html');
+              //    },
+              //    child: Text(
+              //      translate('Privacy Statement'),
+              //      style: linkStyle,
+              //    ).marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com/privacy.html');
-                  },
-                  child: Text(
-                    translate('Privacy Statement'),
-                    style: linkStyle,
-                  ).marginSymmetric(vertical: 4.0)),
-              InkWell(
-                  onTap: () {
-                    launchUrlString('https://rustdesk.com');
+                    launchUrlString('https://sintec.ru');
                   },
                   child: Text(
                     translate('Website'),
@@ -2528,7 +2530,7 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd.\n$license',
+                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Sintec LLC.\n$license',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(
