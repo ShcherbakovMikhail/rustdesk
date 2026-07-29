@@ -32,10 +32,98 @@ fn main() {
             }
         }
 
-        ui::start(args);
+        if args.first().map(String::as_str) == Some("--cm") {
+            run_headless_connection_manager();
+        } else {
+            /*
+             * Остальные внутренние режимы RustDesk сохраняют
+             * штатную обработку.
+             */
+            ui::start(args);
+        }
     }
 
     common::global_clean();
+}
+
+#[cfg(target_os = "windows")]
+fn run_headless_connection_manager() {
+    let connection_manager = ui_cm_interface::ConnectionManager {
+        ui_handler: HeadlessConnectionManagerHandler,
+    };
+
+    /*
+     * start_ipc содержит штатную логику RustDesk для:
+     *
+     * - входящих подключений;
+     * - файловой передачи;
+     * - clipboard;
+     * - терминала;
+     * - разрешений;
+     * - управления состоянием соединения.
+     *
+     * Отличается только UI handler: события интерфейса игнорируются.
+     */
+    ui_cm_interface::start_ipc(connection_manager);
+}
+
+#[cfg(target_os = "windows")]
+#[derive(Clone)]
+struct HeadlessConnectionManagerHandler;
+
+#[cfg(target_os = "windows")]
+impl ui_cm_interface::InvokeUiCM for HeadlessConnectionManagerHandler {
+    fn add_connection(&self, client: &ui_cm_interface::Client) {
+        hbb_common::log::info!(
+            "Headless CM: connection added, id={}, peer={}",
+            client.id,
+            client.peer_id
+        );
+    }
+
+    fn remove_connection(&self, id: i32, close: bool) {
+        hbb_common::log::info!(
+            "Headless CM: connection removed, id={}, close={}",
+            id,
+            close
+        );
+    }
+
+    fn new_message(&self, id: i32, _text: String) {
+        hbb_common::log::debug!(
+            "Headless CM: message received, id={}",
+            id
+        );
+    }
+
+    fn change_theme(&self, _dark: String) {}
+
+    fn change_language(&self) {}
+
+    fn show_elevation(&self, show: bool) {
+        hbb_common::log::debug!(
+            "Headless CM: elevation state changed, show={}",
+            show
+        );
+    }
+
+    fn update_voice_call_state(
+        &self,
+        client: &ui_cm_interface::Client,
+    ) {
+        hbb_common::log::debug!(
+            "Headless CM: voice-call state changed, id={}",
+            client.id
+        );
+    }
+
+    fn file_transfer_log(&self, action: &str, log: &str) {
+        hbb_common::log::debug!(
+            "Headless CM file transfer: action={}, log={}",
+            action,
+            log
+        );
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -63,21 +151,13 @@ fn acquire_connection_manager_mutex() -> bool {
         );
 
         if handle.is_null() {
-            // Не блокируем работу CM, если Windows не позволила
-            // создать mutex. Ошибка будет видна в последующих логах.
             return true;
         }
 
         if GetLastError() == ERROR_ALREADY_EXISTS {
-            // Другой процесс --cm уже работает.
-            // Текущий процесс должен завершиться.
             return false;
         }
     }
 
-    /*
-     * HANDLE намеренно остаётся открытым до завершения процесса.
-     * Windows автоматически освободит mutex при завершении CM.
-     */
     true
 }
