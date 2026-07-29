@@ -20,8 +20,14 @@ path = "src/naming.rs"
 name = "service"
 path = "src/service.rs"
 
+[[bin]]
+name = "rustdesk-agent"
+path = "src/agent.rs"
+required-features = ["agent"]
+
 [features]
 inline = []
+agent = []
 use_samplerate = ["samplerate"]
 use_rubato = ["rubato"]
 use_dasp = ["dasp"]
