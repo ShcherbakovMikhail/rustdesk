@@ -29,6 +29,10 @@ macro_rules! my_println{
 /// If it returns [`Some`], then the process will continue, and flutter gui will be started.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn core_main() -> Option<Vec<String>> {
+    core_main_with_options(false)
+}
+
+pub fn core_main_with_options(agent_mode: bool) -> Option<Vec<String>> {
     if !crate::common::global_init() {
         return None;
     }
@@ -80,7 +84,7 @@ pub fn core_main() -> Option<Vec<String>> {
         i += 1;
     }
     #[cfg(any(target_os = "linux", target_os = "windows"))]
-    if args.is_empty() {
+    if !agent_mode && args.is_empty() {
         #[cfg(target_os = "linux")]
         let should_check_start_tray = crate::check_process("--server", false);
         // We can use `crate::check_process("--server", false)` on Windows.
@@ -380,10 +384,12 @@ pub fn core_main() -> Option<Vec<String>> {
                 return None;
             }
         } else if args[0] == "--tray" {
-            if !crate::check_process("--tray", true) {
-                crate::tray::start_tray();
-            }
-            return None;
+    if !agent_mode {
+        if !crate::check_process("--tray", true) {
+            crate::tray::start_tray();
+        }
+    }
+    return None;
         } else if args[0] == "--install-service" {
             log::info!("start --install-service");
             crate::platform::install_service();
