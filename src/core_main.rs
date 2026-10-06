@@ -452,7 +452,7 @@ pub fn core_main_with_options(agent_mode: bool) -> Option<Vec<String>> {
                 return None;
             }
             if args.len() == 2 {
-                if crate::platform::is_installed() && is_root() {
+               if (agent_mode || crate::platform::is_installed()) && is_root() {
                     if let Err(err) = crate::ipc::set_permanent_password(args[1].to_owned()) {
                         println!("{err}");
                     } else {
