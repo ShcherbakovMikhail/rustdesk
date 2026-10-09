@@ -1,4 +1,4 @@
-name: Build RustDesk Agent for Windows
+name: Build Sintec.RD Agent for Windows
 
 on:
   workflow_dispatch:
