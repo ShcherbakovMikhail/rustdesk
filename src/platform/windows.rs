@@ -520,6 +520,15 @@ fn fix_cursor_mask(
     return true;
 }
 
+// shcherbakov.m 
+fn windows_service_name() -> String {
+    if cfg!(feature = "agent") {
+        "sintec-rd-agent".to_owned()
+    } else {
+        crate::get_app_name()
+    }
+}
+
 define_windows_service!(ffi_service_main, service_main);
 
 fn service_main(arguments: Vec<OsString>) {
@@ -530,7 +539,9 @@ fn service_main(arguments: Vec<OsString>) {
 
 pub fn start_os_service() {
     if let Err(e) =
-        windows_service::service_dispatcher::start(crate::get_app_name(), ffi_service_main)
+        // shcherbakov.m
+        // windows_service::service_dispatcher::start(crate::get_app_name(), ffi_service_main)
+        windows_service::service_dispatcher::start(windows_service_name(), ffi_service_main)
     {
         log::error!("start_service failed: {}", e);
     }
@@ -651,7 +662,9 @@ async fn run_service(_arguments: Vec<OsString>) -> ResultType<()> {
     };
 
     // Register system service event handler
-    let status_handle = service_control_handler::register(crate::get_app_name(), event_handler)?;
+    // shcherbakov.m
+    //let status_handle = service_control_handler::register(crate::get_app_name(), event_handler)?;
+    let status_handle = service_control_handler::register(windows_service_name(), event_handler)?;
 
     let next_status = ServiceStatus {
         // Should match the one from system service registry
@@ -3927,7 +3940,9 @@ fn get_uninstall_amyuni_idd() -> String {
 
 #[inline]
 pub fn is_self_service_running() -> bool {
-    is_service_running(&crate::get_app_name())
+    // shcherbakov.m
+    //is_service_running(&crate::get_app_name())
+    is_service_running(&windows_service_name())
 }
 
 pub fn is_service_running(service_name: &str) -> bool {
