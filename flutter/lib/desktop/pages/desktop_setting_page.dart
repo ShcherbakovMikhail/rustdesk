@@ -2482,8 +2482,10 @@ class _AboutState extends State<_About> {
       final scrollController = ScrollController();
       return SingleChildScrollView(
         controller: scrollController,
-       title: translate('About RustDesk').replaceAll('RustDesk', 'Sintec.RD'),
-       children: [
+        child: _Card(
+        // shcherbakov.m - Брендирование страницы О приграмме
+        title: translate('About RustDesk').replaceAll('RustDesk', 'Sintec.RD'),
+        children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2535,7 +2537,7 @@ class _AboutState extends State<_About> {
                             'Исходный проект: RustDesk, Purslane Tech Pte. Ltd.\n'
                             'Модификации и сборка: Sintec LLC.\n'
                             'Copyright © 2026 Purslane Tech Pte. Ltd.\n'
-                            'Modifications © 2026 Sintec LLC.\n$license',,
+                            'Modifications © 2026 Sintec LLC.\n$license',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(
