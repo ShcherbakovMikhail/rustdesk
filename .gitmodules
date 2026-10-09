@@ -1,0 +1,4 @@
+[submodule "libs/hbb_common"]
+	path = libs/hbb_common
+	url = https://github.com/ShcherbakovMikhail/hbb_common.git
+	branch = sintec-1.4.9
