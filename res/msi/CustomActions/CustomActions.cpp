@@ -530,7 +530,11 @@ UINT __stdcall CreateStartService(__in MSIHANDLE hInstall)
     svcBinary[0] = L'\0';
     svcBinary += 1;
 
-    hr = StringCchPrintfW(szSvcDisplayName, cchSvcDisplayName, L"%ls Service", svcName);
+    if (wcscmp(svcName, L"sintec-rd") == 0) {
+        hr = StringCchCopyW(szSvcDisplayName, cchSvcDisplayName, L"Sintec.RD");
+    } else {
+        hr = StringCchPrintfW(szSvcDisplayName, cchSvcDisplayName, L"%ls Service", svcName);
+    }
     ExitOnFailure(hr, "Failed to compose a resource identifier string");
     if (MyCreateServiceW(svcName, szSvcDisplayName, svcBinary)) {
         WcaLog(LOGMSG_STANDARD, "Service \"%ls\" is created.", svcName);

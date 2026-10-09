@@ -92,9 +92,9 @@ BEGIN
             VALUE "CompanyName", "Sintec LLC." "\0"
             VALUE "FileDescription", "Sintec.RD Remote Desktop" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "rustdesk" "\0"
+            VALUE "InternalName", "sintec-rd" "\0"
             VALUE "LegalCopyright", "Copyright © 2026 Purslane Tech Pte. Ltd. Modifications © 2026 Sintec LLC." "\0"
-            VALUE "OriginalFilename", "rustdesk.exe" "\0"
+            VALUE "OriginalFilename", "sintec-rd.exe" "\0"
             VALUE "ProductName", "Sintec.RD" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
