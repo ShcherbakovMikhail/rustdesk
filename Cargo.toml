@@ -217,6 +217,7 @@ exclude = ["vdi/host", "examples/custom_plugin"]
 libxdo-sys = { path = "libs/libxdo-sys-stub" }
 
 [package.metadata.winres]
+CompanyName = "Sintec LLC."
 LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. Modifications © 2026 Sintec LLC."
 ProductName = "Sintec.RD"
 FileDescription = "Sintec.RD Remote Desktop"
