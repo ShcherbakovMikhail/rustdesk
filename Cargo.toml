@@ -21,7 +21,7 @@ name = "service"
 path = "src/service.rs"
 
 [[bin]]
-name = "Sintec.RD-agent"
+name = "sintec-rd-agent"
 path = "src/agent.rs"
 required-features = ["agent"]
 

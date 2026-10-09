@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-agent:
-    name: Build Sintec.RD-agent.exe
+    name: Build sintec-rd-agent.exe
     runs-on: windows-2022
 
     steps:
@@ -46,7 +46,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: Sintec.RD-agent-windows-x64
+          prefix-key: sintec-rd-agent-windows-x64
 
       - name: Set up vcpkg
         uses: lukka/run-vcpkg@v11
@@ -67,22 +67,22 @@ jobs:
         run: |
           python3 res/inline-sciter.py
 
-      - name: Build Sintec.RD-agent.exe
+      - name: Build sintec-rd-agent.exe
         shell: bash
         run: |
           cargo build \
             --locked \
             --release \
-            --bin Sintec.RD-agent \
+            --bin sintec-rd-agent \
             --features "inline,agent"
 
       - name: Verify build result
         shell: pwsh
         run: |
-          $file = "target\release\Sintec.RD-agent.exe"
+          $file = "target\release\sintec-rd-agent.exe"
 
           if (!(Test-Path $file)) {
-              throw "Sintec.RD-agent.exe was not created"
+              throw "sintec-rd-agent.exe was not created"
           }
 
           Get-Item $file | Format-List Name, Length, FullName
@@ -92,13 +92,13 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifact | Out-Null
           Copy-Item `
-            "target\release\Sintec.RD-agent.exe" `
-            "artifact\Sintec.RD-agent.exe"
+            "target\release\sintec-rd-agent.exe" `
+            "artifact\sintec-rd-agent.exe"
 
-      - name: Upload Sintec.RD-agent.exe
+      - name: Upload sintec-rd-agent.exe
         uses: actions/upload-artifact@v4
         with:
-          name: Sintec.RD-agent-windows-x64
-          path: artifact/Sintec.RD-agent.exe
+          name: sintec-rd-agent-windows-x64
+          path: artifact/sintec-rd-agent.exe
           if-no-files-found: error
           retention-days: 30
