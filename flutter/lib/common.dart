@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 33394)
-Total output lines: 4302
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -1071,7 +1068,2039 @@ class CustomAlertDialog extends StatelessWidget {
       required this.content,
       this.actions,
       this.contentPadding,
-      this.…15394 tokens truncated…dget Function(dynamic data) hasData}) {
+      this.contentBoxConstraints = const BoxConstraints(maxWidth: 500),
+      this.onSubmit,
+      this.onCancel})
+      : super(key: key);
+
+  final Widget? title;
+  final EdgeInsetsGeometry? titlePadding;
+  final Widget content;
+  final List<Widget>? actions;
+  final double? contentPadding;
+  final BoxConstraints contentBoxConstraints;
+  final Function()? onSubmit;
+  final Function()? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    // request focus
+    FocusScopeNode scopeNode = FocusScopeNode();
+    Future.delayed(Duration.zero, () {
+      if (!scopeNode.hasFocus) scopeNode.requestFocus();
+    });
+    bool tabTapped = false;
+    if (isAndroid) gFFI.invokeMethod("enable_soft_keyboard", true);
+
+    return FocusScope(
+      node: scopeNode,
+      autofocus: true,
+      onKey: (node, key) {
+        if (key.logicalKey == LogicalKeyboardKey.escape) {
+          if (key is RawKeyDownEvent) {
+            onCancel?.call();
+          }
+          return KeyEventResult.handled; // avoid TextField exception on escape
+        } else if (!tabTapped &&
+            onSubmit != null &&
+            (key.logicalKey == LogicalKeyboardKey.enter ||
+                key.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+          if (key is RawKeyDownEvent) onSubmit?.call();
+          return KeyEventResult.handled;
+        } else if (key.logicalKey == LogicalKeyboardKey.tab) {
+          if (key is RawKeyDownEvent) {
+            scopeNode.nextFocus();
+            tabTapped = true;
+          }
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: AlertDialog(
+          scrollable: true,
+          title: title,
+          content: ConstrainedBox(
+            constraints: contentBoxConstraints,
+            child: content,
+          ),
+          actions: actions,
+          titlePadding: titlePadding ?? MyTheme.dialogTitlePadding(),
+          contentPadding:
+              MyTheme.dialogContentPadding(actions: actions is List),
+          actionsPadding: MyTheme.dialogActionsPadding(),
+          buttonPadding: MyTheme.dialogButtonPadding),
+    );
+  }
+}
+
+Widget createDialogContent(String text) {
+  final RegExp linkRegExp = RegExp(r'(https?://[^\s]+)');
+  bool hasLink = linkRegExp.hasMatch(text);
+
+  // Early return: no link, use default theme color
+  if (!hasLink) {
+    return SelectableText(text, style: const TextStyle(fontSize: 15));
+  }
+
+  final List<TextSpan> spans = [];
+  int start = 0;
+
+  linkRegExp.allMatches(text).forEach((match) {
+    if (match.start > start) {
+      spans.add(TextSpan(text: text.substring(start, match.start)));
+    }
+    spans.add(TextSpan(
+      text: match.group(0) ?? '',
+      style: const TextStyle(
+        color: Colors.blue,
+        decoration: TextDecoration.underline,
+      ),
+      recognizer: TapGestureRecognizer()
+        ..onTap = () {
+          String linkText = match.group(0) ?? '';
+          linkText = linkText.replaceAll(RegExp(r'[.,;!?]+$'), '');
+          launchUrl(Uri.parse(linkText));
+        },
+    ));
+    start = match.end;
+  });
+
+  if (start < text.length) {
+    spans.add(TextSpan(text: text.substring(start)));
+  }
+
+  return SelectableText.rich(
+    TextSpan(
+      style: const TextStyle(fontSize: 15),
+      children: spans,
+    ),
+  );
+}
+
+void msgBox(SessionID sessionId, String type, String title, String text,
+    String link, OverlayDialogManager dialogManager,
+    {bool? hasCancel,
+    ReconnectHandle? reconnect,
+    int? reconnectTimeout,
+    VoidCallback? onSubmit,
+    int? submitTimeout}) {
+  dialogManager.dismissAll();
+  if (type.contains('insecure-connection')) {
+    Future<void> closeSession() async {
+      await bind.sessionSetCommon(
+        sessionId: sessionId,
+        key: 'continue-insecure-connection',
+        value: 'N',
+      );
+      dialogManager.dismissAll();
+      closeConnection();
+    }
+
+    void continueSession() {
+      unawaited(
+        bind.sessionSetCommon(
+          sessionId: sessionId,
+          key: 'continue-insecure-connection',
+          value: 'Y',
+        ),
+      );
+      dialogManager.dismissAll();
+    }
+
+    dialogManager.show(
+      (setState, close, context) => CustomAlertDialog(
+        title: null,
+        content: SelectionArea(child: msgboxContent(type, title, text)),
+        actions: [
+          dialogButton(
+            'Continue',
+            onPressed: continueSession,
+            isOutline: true,
+          ),
+          dialogButton('Disconnect', onPressed: closeSession),
+        ],
+        onSubmit: closeSession,
+        onCancel: closeSession,
+      ),
+      tag: '$sessionId-$type-$title-$text-$link',
+    );
+    return;
+  }
+
+  List<Widget> buttons = [];
+  bool hasOk = false;
+  submit() {
+    dialogManager.dismissAll();
+    if (onSubmit != null) {
+      onSubmit.call();
+    } else {
+      // https://github.com/rustdesk/rustdesk/blob/5e9a31340b899822090a3731769ae79c6bf5f3e5/src/ui/common.tis#L263
+      if (!type.contains("custom") && desktopType != DesktopType.portForward) {
+        closeConnection();
+      }
+    }
+  }
+
+  cancel() {
+    dialogManager.dismissAll();
+  }
+
+  jumplink() {
+    if (link.startsWith('http')) {
+      launchUrl(Uri.parse(link));
+    }
+  }
+
+  if (type != "connecting" && type != "success" && !type.contains("nook")) {
+    hasOk = true;
+    late final Widget btn;
+    if (submitTimeout != null) {
+      btn = _CountDownButton(
+        text: 'OK',
+        second: submitTimeout,
+        onPressed: submit,
+        submitOnTimeout: true,
+      );
+    } else {
+      btn = dialogButton('OK', onPressed: submit);
+    }
+    buttons.insert(0, btn);
+  }
+  hasCancel ??= !type.contains("error") &&
+      !type.contains("nocancel") &&
+      type != "restarting";
+  if (hasCancel) {
+    buttons.insert(
+        0, dialogButton('Cancel', onPressed: cancel, isOutline: true));
+  }
+  if (type.contains("hasclose")) {
+    buttons.insert(
+        0,
+        dialogButton('Close', onPressed: () {
+          dialogManager.dismissAll();
+        }));
+  }
+  if (reconnect != null &&
+      title == "Connection Error" &&
+      reconnectTimeout != null) {
+    // `enabled` is used to disable the dialog button once the button is clicked.
+    final enabled = true.obs;
+    final button = Obx(() => _CountDownButton(
+          text: 'Reconnect',
+          second: reconnectTimeout,
+          onPressed: enabled.isTrue
+              ? () {
+                  // Disable the button
+                  enabled.value = false;
+                  reconnect(dialogManager, sessionId, false);
+                }
+              : null,
+        ));
+    buttons.insert(0, button);
+  }
+  if (link.isNotEmpty) {
+    buttons.insert(0, dialogButton('JumpLink', onPressed: jumplink));
+  }
+  dialogManager.show(
+    (setState, close, context) => CustomAlertDialog(
+      title: null,
+      content: SelectionArea(child: msgboxContent(type, title, text)),
+      actions: buttons,
+      onSubmit: hasOk ? submit : null,
+      onCancel: hasCancel == true ? cancel : null,
+    ),
+    tag: '$sessionId-$type-$title-$text-$link',
+  );
+}
+
+Color? _msgboxColor(String type) {
+  if (type == "input-password" || type == "custom-os-password") {
+    return Color(0xFFAD448E);
+  }
+  if (type.contains("success")) {
+    return Color(0xFF32bea6);
+  }
+  if (type.contains("error") || type == "re-input-password") {
+    return Color(0xFFE04F5F);
+  }
+  return Color(0xFF2C8CFF);
+}
+
+Widget msgboxIcon(String type) {
+  IconData? iconData;
+  if (type.contains("error") || type == "re-input-password") {
+    iconData = Icons.cancel;
+  }
+  if (type.contains("success")) {
+    iconData = Icons.check_circle;
+  }
+  if (type == "wait-uac" || type == "wait-remote-accept-nook") {
+    iconData = Icons.hourglass_top;
+  }
+  if (type == 'on-uac' || type == 'on-foreground-elevated') {
+    iconData = Icons.admin_panel_settings;
+  }
+  if (type.contains('info')) {
+    iconData = Icons.info;
+  }
+  if (iconData != null) {
+    return Icon(iconData, size: 50, color: _msgboxColor(type))
+        .marginOnly(right: 16);
+  }
+
+  return Offstage();
+}
+
+// title should be null
+Widget msgboxContent(String type, String title, String text) {
+  String translateText(String text) {
+    if (text.indexOf('Failed') == 0 && text.indexOf(': ') > 0) {
+      List<String> words = text.split(': ');
+      for (var i = 0; i < words.length; ++i) {
+        words[i] = translate(words[i]);
+      }
+      text = words.join(': ');
+    } else {
+      List<String> words = text.split(' ');
+      if (words.length > 1 && words[0].endsWith('_tip')) {
+        words[0] = translate(words[0]);
+        final rest = text.substring(words[0].length + 1);
+        text = '${words[0]} ${translate(rest)}';
+      } else {
+        text = translate(text);
+      }
+    }
+    return text;
+  }
+
+  return Row(
+    children: [
+      msgboxIcon(type),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              translate(title),
+              style: TextStyle(fontSize: 21),
+            ).marginOnly(bottom: 10),
+            createDialogContent(translateText(text)),
+          ],
+        ),
+      ),
+    ],
+  ).marginOnly(bottom: 12);
+}
+
+void msgBoxCommon(OverlayDialogManager dialogManager, String title,
+    Widget content, List<Widget> buttons,
+    {bool hasCancel = true}) {
+  dialogManager.show((setState, close, context) => CustomAlertDialog(
+        title: Text(
+          translate(title),
+          style: TextStyle(fontSize: 21),
+        ),
+        content: content,
+        actions: buttons,
+        onCancel: hasCancel ? close : null,
+      ));
+}
+
+Color str2color(String str, [alpha = 0xFF]) {
+  var hash = 160 << 16 + 114 << 8 + 91;
+  for (var i = 0; i < str.length; i += 1) {
+    hash = str.codeUnitAt(i) + ((hash << 5) - hash);
+  }
+  hash = hash % 16777216;
+  return Color((hash & 0xFF7FFF) | (alpha << 24));
+}
+
+Color str2color2(String str, {List<int> existing = const []}) {
+  Map<String, Color> colorMap = {
+    "red": Colors.red,
+    "green": Colors.green,
+    "blue": Colors.blue,
+    "orange": Colors.orange,
+    "purple": Colors.purple,
+    "grey": Colors.grey,
+    "cyan": Colors.cyan,
+    "lime": Colors.lime,
+    "teal": Colors.teal,
+    "pink": Colors.pink[200]!,
+    "indigo": Colors.indigo,
+    "brown": Colors.brown,
+  };
+  final color = colorMap[str.toLowerCase()];
+  if (color != null) {
+    return color.withAlpha(0xFF);
+  }
+  if (str.toLowerCase() == 'yellow') {
+    return Colors.yellow.withAlpha(0xFF);
+  }
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    hash += str.codeUnitAt(i);
+  }
+  List<Color> colorList = colorMap.values.toList();
+  hash = hash % colorList.length;
+  var result = colorList[hash].withAlpha(0xFF);
+  if (existing.contains(result.value)) {
+    Color? notUsed =
+        colorList.firstWhereOrNull((e) => !existing.contains(e.value));
+    if (notUsed != null) {
+      result = notUsed;
+    }
+  }
+  return result;
+}
+
+const K = 1024;
+const M = K * K;
+const G = M * K;
+
+String readableFileSize(double size) {
+  if (size < K) {
+    return "${size.toStringAsFixed(2)} B";
+  } else if (size < M) {
+    return "${(size / K).toStringAsFixed(2)} KB";
+  } else if (size < G) {
+    return "${(size / M).toStringAsFixed(2)} MB";
+  } else {
+    return "${(size / G).toStringAsFixed(2)} GB";
+  }
+}
+
+/// Flutter can't not catch PointerMoveEvent when size is 1
+/// This will happen in Android AccessibilityService Input
+/// android can't init dispatching size yet ,see: https://stackoverflow.com/questions/59960451/android-accessibility-dispatchgesture-is-it-possible-to-specify-pressure-for-a
+/// use this temporary solution until flutter or android fixes the bug
+class AccessibilityListener extends StatelessWidget {
+  final Widget? child;
+  static final offset = 100;
+
+  AccessibilityListener({this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+        onPointerDown: (evt) {
+          if (evt.size == 1) {
+            GestureBinding.instance.handlePointerEvent(PointerAddedEvent(
+                pointer: evt.pointer + offset, position: evt.position));
+            GestureBinding.instance.handlePointerEvent(PointerDownEvent(
+                pointer: evt.pointer + offset,
+                size: 0.1,
+                position: evt.position));
+          }
+        },
+        onPointerUp: (evt) {
+          if (evt.size == 1) {
+            GestureBinding.instance.handlePointerEvent(PointerUpEvent(
+                pointer: evt.pointer + offset,
+                size: 0.1,
+                position: evt.position));
+            GestureBinding.instance.handlePointerEvent(PointerRemovedEvent(
+                pointer: evt.pointer + offset, position: evt.position));
+          }
+        },
+        onPointerMove: (evt) {
+          if (evt.size == 1) {
+            GestureBinding.instance.handlePointerEvent(PointerMoveEvent(
+                pointer: evt.pointer + offset,
+                size: 0.1,
+                delta: evt.delta,
+                position: evt.position));
+          }
+        },
+        child: child);
+  }
+}
+
+class AndroidPermissionManager {
+  static Completer<bool>? _completer;
+  static Timer? _timer;
+  static var _current = "";
+
+  static bool isWaitingFile() {
+    if (_completer != null) {
+      return !_completer!.isCompleted && _current == kManageExternalStorage;
+    }
+    return false;
+  }
+
+  static Future<bool> check(String type) {
+    if (isDesktop || isWeb) {
+      return Future.value(true);
+    }
+    return gFFI.invokeMethod("check_permission", type);
+  }
+
+  // startActivity goto Android Setting's page to request permission manually by user
+  static void startAction(String action) {
+    gFFI.invokeMethod(AndroidChannel.kStartAction, action);
+  }
+
+  /// We use XXPermissions to request permissions,
+  /// for supported types, see https://github.com/getActivity/XXPermissions/blob/e46caea32a64ad7819df62d448fb1c825481cd28/library/src/main/java/com/hjq/permissions/Permission.java
+  static Future<bool> request(String type) {
+    if (isDesktop || isWeb) {
+      return Future.value(true);
+    }
+
+    gFFI.invokeMethod("request_permission", type);
+
+    // clear last task
+    if (_completer?.isCompleted == false) {
+      _completer?.complete(false);
+    }
+    _timer?.cancel();
+
+    _current = type;
+    _completer = Completer<bool>();
+
+    _timer = Timer(Duration(seconds: 120), () {
+      if (_completer == null) return;
+      if (!_completer!.isCompleted) {
+        _completer!.complete(false);
+      }
+      _completer = null;
+      _current = "";
+    });
+    return _completer!.future;
+  }
+
+  static complete(String type, bool res) {
+    if (type != _current) {
+      res = false;
+    }
+    _timer?.cancel();
+    _completer?.complete(res);
+    _current = "";
+  }
+}
+
+RadioListTile<T> getRadio<T>(
+    Widget title, T toValue, T curValue, ValueChanged<T?>? onChange,
+    {bool? dense}) {
+  return RadioListTile<T>(
+    visualDensity: VisualDensity.compact,
+    controlAffinity: ListTileControlAffinity.trailing,
+    title: title,
+    value: toValue,
+    groupValue: curValue,
+    onChanged: onChange,
+    dense: dense,
+  );
+}
+
+/// find ffi, tag is Remote ID
+/// for session specific usage
+FFI ffi(String? tag) {
+  return Get.find<FFI>(tag: tag);
+}
+
+/// Global FFI object
+late FFI _globalFFI;
+
+FFI get gFFI => _globalFFI;
+
+Future<void> initGlobalFFI() async {
+  debugPrint("_globalFFI init");
+  _globalFFI = FFI(null);
+  debugPrint("_globalFFI init end");
+  // after `put`, can also be globally found by Get.find<FFI>();
+  Get.put<FFI>(_globalFFI, permanent: true);
+}
+
+String translate(String name) {
+  if (name.startsWith('Failed to') && name.contains(': ')) {
+    return name.split(': ').map((x) => translate(x)).join(': ');
+  }
+  return platformFFI.translate(name, localeName);
+}
+
+// This function must be kept the same as the one in rust and sciter code.
+// rust: libs/hbb_common/src/config.rs -> option2bool()
+// sciter: Does not have the function, but it should be kept the same.
+bool option2bool(String option, String value) {
+  bool res;
+  if (option.startsWith("enable-")) {
+    res = value != "N";
+  } else if (option.startsWith("allow-") ||
+      option == kOptionStopService ||
+      option == kOptionDirectServer ||
+      option == kOptionForceAlwaysRelay) {
+    res = value == "Y";
+  } else {
+    // "" is true
+    res = value != "N";
+  }
+  return res;
+}
+
+String bool2option(String option, bool b) {
+  String res;
+  if (option.startsWith('enable-') &&
+      option != kOptionEnableUdpPunch &&
+      option != kOptionEnableIpv6Punch) {
+    res = b ? defaultOptionYes : 'N';
+  } else if (option.startsWith('allow-') ||
+      option == kOptionStopService ||
+      option == kOptionDirectServer ||
+      option == kOptionForceAlwaysRelay) {
+    res = b ? 'Y' : defaultOptionNo;
+  } else {
+    res = b ? 'Y' : 'N';
+  }
+  return res;
+}
+
+mainSetBoolOption(String key, bool value) async {
+  String v = bool2option(key, value);
+  await bind.mainSetOption(key: key, value: v);
+}
+
+Future<bool> mainGetBoolOption(String key) async {
+  return option2bool(key, await bind.mainGetOption(key: key));
+}
+
+bool mainGetBoolOptionSync(String key) {
+  return option2bool(key, bind.mainGetOptionSync(key: key));
+}
+
+mainSetLocalBoolOption(String key, bool value) async {
+  String v = bool2option(key, value);
+  await bind.mainSetLocalOption(key: key, value: v);
+}
+
+bool mainGetLocalBoolOptionSync(String key) {
+  return option2bool(key, bind.mainGetLocalOption(key: key));
+}
+
+bool mainGetPeerBoolOptionSync(String id, String key) {
+  return option2bool(key, bind.mainGetPeerOptionSync(id: id, key: key));
+}
+
+// Don't use `option2bool()` and `bool2option()` to convert the session option.
+// Use `sessionGetToggleOption()` and `sessionToggleOption()` instead.
+// Because all session options use `Y` and `<Empty>` as values.
+
+Future<bool> matchPeer(
+    String searchText, Peer peer, PeerTabIndex peerTabIndex) async {
+  if (searchText.isEmpty) {
+    return true;
+  }
+  if (peer.id.toLowerCase().contains(searchText)) {
+    return true;
+  }
+  if (peer.hostname.toLowerCase().contains(searchText) ||
+      peer.username.toLowerCase().contains(searchText)) {
+    return true;
+  }
+  if (peer.alias.toLowerCase().contains(searchText)) {
+    return true;
+  }
+  if (peerTabShowNote(peerTabIndex) &&
+      peer.note.toLowerCase().contains(searchText)) {
+    return true;
+  }
+  return false;
+}
+
+/// Get the image for the current [platform].
+Widget getPlatformImage(String platform, {double size = 50}) {
+  if (platform.isEmpty) {
+    return Container(width: size, height: size);
+  }
+  if (platform == kPeerPlatformMacOS) {
+    platform = 'mac';
+  } else if (platform != kPeerPlatformLinux &&
+      platform != kPeerPlatformAndroid) {
+    platform = 'win';
+  } else {
+    platform = platform.toLowerCase();
+  }
+  return SvgPicture.asset('assets/$platform.svg', height: size, width: size);
+}
+
+class LastWindowPosition {
+  double? width;
+  double? height;
+  double? offsetWidth;
+  double? offsetHeight;
+  bool? isMaximized;
+  bool? isFullscreen;
+
+  LastWindowPosition(this.width, this.height, this.offsetWidth,
+      this.offsetHeight, this.isMaximized, this.isFullscreen);
+
+  bool equals(LastWindowPosition other) {
+    return ((width == other.width) &&
+        (height == other.height) &&
+        (offsetWidth == other.offsetWidth) &&
+        (offsetHeight == other.offsetHeight) &&
+        (isMaximized == other.isMaximized) &&
+        (isFullscreen == other.isFullscreen));
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "width": width,
+      "height": height,
+      "offsetWidth": offsetWidth,
+      "offsetHeight": offsetHeight,
+      "isMaximized": isMaximized,
+      "isFullscreen": isFullscreen,
+    };
+  }
+
+  @override
+  String toString() {
+    return jsonEncode(toJson());
+  }
+
+  static LastWindowPosition? loadFromString(String content) {
+    if (content.isEmpty) {
+      return null;
+    }
+    try {
+      final m = jsonDecode(content);
+      return LastWindowPosition(m["width"], m["height"], m["offsetWidth"],
+          m["offsetHeight"], m["isMaximized"], m["isFullscreen"]);
+    } catch (e) {
+      debugPrintStack(
+          label:
+              'Failed to load LastWindowPosition "$content" ${e.toString()}');
+      return null;
+    }
+  }
+}
+
+String get windowFramePrefix =>
+    kWindowPrefix +
+    (bind.isIncomingOnly()
+        ? "incoming_"
+        : (bind.isOutgoingOnly() ? "outgoing_" : ""));
+
+typedef WindowKey = ({WindowType type, int? windowId});
+
+LastWindowPosition? _lastWindowPosition = null;
+final Debouncer _saveWindowDebounce = Debouncer(delay: Duration(seconds: 1));
+
+/// Save window position and size on exit
+/// Note that windowId must be provided if it's subwindow
+Future<void> saveWindowPosition(WindowType type,
+    {int? windowId, bool? flush}) async {
+  if (type != WindowType.Main && windowId == null) {
+    debugPrint(
+        "Error: windowId cannot be null when saving positions for sub window");
+  }
+
+  Offset? position;
+  Size? sz;
+  late bool isMaximized;
+  bool isFullscreen = stateGlobal.fullscreen.isTrue;
+
+  setPreFrame() {
+    final pos = bind.getLocalFlutterOption(k: windowFramePrefix + type.name);
+    var lpos = LastWindowPosition.loadFromString(pos);
+    if (lpos != null) {
+      if (lpos.offsetWidth != null && lpos.offsetHeight != null) {
+        position = Offset(lpos.offsetWidth!, lpos.offsetHeight!);
+      }
+      if (lpos.width != null && lpos.height != null) {
+        sz = Size(lpos.width!, lpos.height!);
+      }
+    }
+  }
+
+  switch (type) {
+    case WindowType.Main:
+      // Checking `bind.isIncomingOnly()` is a simple workaround for MacOS.
+      // `await windowManager.isMaximized()` will always return true
+      // if is not resizable. The reason is unknown.
+      //
+      // `setResizable(!bind.isIncomingOnly());` in main.dart
+      isMaximized =
+          bind.isIncomingOnly() ? false : await windowManager.isMaximized();
+      if (isFullscreen || isMaximized) {
+        setPreFrame();
+      } else {
+        position = await windowManager.getPosition(
+            ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+        sz = await windowManager.getSize(
+            ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+      }
+      break;
+    default:
+      final wc = WindowController.fromWindowId(windowId!);
+      isMaximized = await wc.isMaximized();
+      if (isFullscreen || isMaximized) {
+        setPreFrame();
+      } else {
+        final Rect frame;
+        try {
+          frame = await wc.getFrame();
+        } catch (e) {
+          debugPrint(
+              "Failed to get frame of window $windowId, it may be hidden");
+          return;
+        }
+        position = frame.topLeft;
+        sz = frame.size;
+      }
+      break;
+  }
+  if (isWindows && position != null) {
+    const kMinOffset = -10000;
+    const kMaxOffset = 10000;
+    if (position!.dx < kMinOffset ||
+        position!.dy < kMinOffset ||
+        position!.dx > kMaxOffset ||
+        position!.dy > kMaxOffset) {
+      debugPrint("Invalid position: $position, ignore saving position");
+      return;
+    }
+  }
+
+  final pos = LastWindowPosition(sz?.width, sz?.height, position?.dx,
+      position?.dy, isMaximized, isFullscreen);
+
+  final WindowKey key = (type: type, windowId: windowId);
+
+  final bool haveNewWindowPosition =
+      (_lastWindowPosition == null) || !pos.equals(_lastWindowPosition!);
+  final bool isPreviousNewWindowPositionPending = _saveWindowDebounce.isRunning;
+
+  if (haveNewWindowPosition || isPreviousNewWindowPositionPending) {
+    _lastWindowPosition = pos;
+
+    if (flush ?? false) {
+      // If a previous update is pending, replace it.
+      _saveWindowDebounce.cancel();
+      await _saveWindowPositionActual(key);
+    } else if (haveNewWindowPosition) {
+      _saveWindowDebounce.call(() => _saveWindowPositionActual(key));
+    }
+  }
+}
+
+Future<void> _saveWindowPositionActual(WindowKey key) async {
+  LastWindowPosition? pos = _lastWindowPosition;
+
+  if (pos != null) {
+    debugPrint(
+        "Saving frame: ${key.windowId}: ${pos.width}/${pos.height}, offset:${pos.offsetWidth}/${pos.offsetHeight}, isMaximized:${pos.isMaximized}, isFullscreen:${pos.isFullscreen}");
+
+    await bind.setLocalFlutterOption(
+        k: windowFramePrefix + key.type.name, v: pos.toString());
+
+    if ((key.type == WindowType.RemoteDesktop ||
+            key.type == WindowType.ViewCamera) &&
+        key.windowId != null) {
+      await _saveSessionWindowPosition(key.type, key.windowId!,
+          pos.isMaximized ?? false, pos.isFullscreen ?? false, pos);
+    }
+  }
+}
+
+Future _saveSessionWindowPosition(WindowType windowType, int windowId,
+    bool isMaximized, bool isFullscreen, LastWindowPosition pos) async {
+  final remoteList = await DesktopMultiWindow.invokeMethod(
+      windowId, kWindowEventGetRemoteList, null);
+  getPeerPos(String peerId) {
+    if (isMaximized || isFullscreen) {
+      final peerPos = bind.mainGetPeerFlutterOptionSync(
+          id: peerId, k: windowFramePrefix + windowType.name);
+      var lpos = LastWindowPosition.loadFromString(peerPos);
+      return LastWindowPosition(
+              lpos?.width ?? pos.offsetWidth,
+              lpos?.height ?? pos.offsetHeight,
+              lpos?.offsetWidth ?? pos.offsetWidth,
+              lpos?.offsetHeight ?? pos.offsetHeight,
+              isMaximized,
+              isFullscreen)
+          .toString();
+    } else {
+      return pos.toString();
+    }
+  }
+
+  if (remoteList != null) {
+    for (final peerId in remoteList.split(',')) {
+      bind.mainSetPeerFlutterOptionSync(
+          id: peerId,
+          k: windowFramePrefix + windowType.name,
+          v: getPeerPos(peerId));
+    }
+  }
+}
+
+Future<Size> _adjustRestoreMainWindowSize(double? width, double? height) async {
+  const double minWidth = 1;
+  const double minHeight = 1;
+  const double maxWidth = 6480;
+  const double maxHeight = 6480;
+
+  final defaultWidth =
+      ((isDesktop || isWebDesktop) ? 1280 : kMobileDefaultDisplayWidth)
+          .toDouble();
+  final defaultHeight =
+      ((isDesktop || isWebDesktop) ? 720 : kMobileDefaultDisplayHeight)
+          .toDouble();
+  double restoreWidth = width ?? defaultWidth;
+  double restoreHeight = height ?? defaultHeight;
+
+  if (restoreWidth < minWidth) {
+    restoreWidth = defaultWidth;
+  }
+  if (restoreHeight < minHeight) {
+    restoreHeight = defaultHeight;
+  }
+  if (restoreWidth > maxWidth) {
+    restoreWidth = defaultWidth;
+  }
+  if (restoreHeight > maxHeight) {
+    restoreHeight = defaultHeight;
+  }
+  return Size(restoreWidth, restoreHeight);
+}
+
+// Consider using Rect.contains() instead,
+// though the implementation is not exactly the same.
+bool isPointInRect(Offset point, Rect rect) {
+  return point.dx >= rect.left &&
+      point.dx <= rect.right &&
+      point.dy >= rect.top &&
+      point.dy <= rect.bottom;
+}
+
+/// return null means center
+Future<Offset?> _adjustRestoreMainWindowOffset(
+  double? left,
+  double? top,
+  double? width,
+  double? height,
+) async {
+  if (left == null || top == null || width == null || height == null) {
+    return null;
+  }
+
+  if (isDesktop || isWebDesktop) {
+    final screens = await window_size.getScreenList();
+    if (screens.isNotEmpty) {
+      final windowRect = Rect.fromLTWH(left, top, width, height);
+      bool isVisible = false;
+      for (final screen in screens) {
+        final intersection = windowRect.intersect(screen.visibleFrame);
+        if (intersection.width >= 10.0 && intersection.height >= 10.0) {
+          isVisible = true;
+          break;
+        }
+      }
+      if (!isVisible) {
+        return null;
+      }
+      return Offset(left, top);
+    }
+  }
+
+  double frameLeft = 0.0;
+  double frameTop = 0.0;
+  double frameRight = ((isDesktop || isWebDesktop)
+          ? kDesktopMaxDisplaySize
+          : kMobileMaxDisplaySize)
+      .toDouble();
+  double frameBottom = ((isDesktop || isWebDesktop)
+          ? kDesktopMaxDisplaySize
+          : kMobileMaxDisplaySize)
+      .toDouble();
+
+  final minWidth = 10.0;
+  if ((left + minWidth) > frameRight ||
+      (top + minWidth) > frameBottom ||
+      (left + width - minWidth) < frameLeft ||
+      top < frameTop) {
+    return null;
+  } else {
+    return Offset(left, top);
+  }
+}
+
+/// Restore window position and size on start
+/// Note that windowId must be provided if it's subwindow
+//
+// display is used to set the offset of the window in individual display mode.
+Future<bool> restoreWindowPosition(WindowType type,
+    {int? windowId, String? peerId, int? display}) async {
+  if (bind
+      .mainGetEnv(key: "DISABLE_RUSTDESK_RESTORE_WINDOW_POSITION")
+      .isNotEmpty) {
+    return false;
+  }
+  if (type != WindowType.Main && windowId == null) {
+    debugPrint(
+        "Error: windowId cannot be null when saving positions for sub window");
+    return false;
+  }
+
+  bool isRemotePeerPos = false;
+  String? pos;
+  // No need to check mainGetLocalBoolOptionSync(kOptionOpenNewConnInTabs)
+  // Though "open in tabs" is true and the new window restore peer position, it's ok.
+  if ((type == WindowType.RemoteDesktop || type == WindowType.ViewCamera) &&
+      windowId != null &&
+      peerId != null) {
+    final peerPos = bind.mainGetPeerFlutterOptionSync(
+        id: peerId, k: windowFramePrefix + type.name);
+    if (peerPos.isNotEmpty) {
+      pos = peerPos;
+    }
+    isRemotePeerPos = pos != null;
+  }
+  pos ??= bind.getLocalFlutterOption(k: windowFramePrefix + type.name);
+
+  var lpos = LastWindowPosition.loadFromString(pos);
+  if (lpos == null) {
+    debugPrint("No window position saved, trying to center the window.");
+    switch (type) {
+      case WindowType.Main:
+        // Center the main window only if no position is saved (on first run).
+        if (isWindows || isLinux) {
+          await windowManager.center();
+        }
+        // For MacOS, the window is already centered by default.
+        // See https://github.com/rustdesk/rustdesk/blob/9b9276e7524523d7f667fefcd0694d981443df0e/flutter/macos/Runner/Base.lproj/MainMenu.xib#L333
+        // If `<windowPositionMask>` in `<window>` is not set, the window will be centered.
+        break;
+      default:
+        // No need to change the position of a sub window if no position is saved,
+        // since the default position is already centered.
+        // https://github.com/rustdesk/rustdesk/blob/317639169359936f7f9f85ef445ec9774218772d/flutter/lib/utils/multi_window_manager.dart#L163
+        break;
+    }
+    return true;
+  }
+  if (type == WindowType.RemoteDesktop || type == WindowType.ViewCamera) {
+    if (!isRemotePeerPos && windowId != null) {
+      if (lpos.offsetWidth != null) {
+        lpos.offsetWidth = lpos.offsetWidth! + windowId * kNewWindowOffset;
+      }
+      if (lpos.offsetHeight != null) {
+        lpos.offsetHeight = lpos.offsetHeight! + windowId * kNewWindowOffset;
+      }
+    }
+    if (display != null) {
+      if (lpos.offsetWidth != null) {
+        lpos.offsetWidth = lpos.offsetWidth! + display * kNewWindowOffset;
+      }
+      if (lpos.offsetHeight != null) {
+        lpos.offsetHeight = lpos.offsetHeight! + display * kNewWindowOffset;
+      }
+    }
+  }
+
+  final size = await _adjustRestoreMainWindowSize(lpos.width, lpos.height);
+  final offsetLeftTop = await _adjustRestoreMainWindowOffset(
+    lpos.offsetWidth,
+    lpos.offsetHeight,
+    size.width,
+    size.height,
+  );
+  debugPrint(
+      "restore lpos: ${size.width}/${size.height}, offset:${offsetLeftTop?.dx}/${offsetLeftTop?.dy}, isMaximized: ${lpos.isMaximized}, isFullscreen: ${lpos.isFullscreen}");
+
+  switch (type) {
+    case WindowType.Main:
+      restorePos() async {
+        if (offsetLeftTop == null) {
+          await windowManager.center();
+        } else {
+          await windowManager.setPosition(offsetLeftTop,
+              ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+        }
+      }
+      if (lpos.isMaximized == true) {
+        await restorePos();
+        if (!(bind.isIncomingOnly() || bind.isOutgoingOnly())) {
+          await windowManager.maximize();
+        }
+      } else {
+        final storeSize = !bind.isIncomingOnly() || bind.isOutgoingOnly();
+        if (isWindows) {
+          if (storeSize) {
+            // We need to set the window size first to avoid the incorrect size in some special cases.
+            // E.g. There are two monitors, the left one is 100% DPI and the right one is 175% DPI.
+            // The window belongs to the left monitor, but if it is moved a little to the right, it will belong to the right monitor.
+            // After restoring, the size will be incorrect.
+            // See known issue in https://github.com/rustdesk/rustdesk/pull/9840
+            await windowManager.setSize(size,
+                ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+          }
+          await restorePos();
+          if (storeSize) {
+            await windowManager.setSize(size,
+                ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+          }
+        } else {
+          if (storeSize) {
+            await windowManager.setSize(size,
+                ignoreDevicePixelRatio: _ignoreDevicePixelRatio);
+          }
+          await restorePos();
+        }
+      }
+      return true;
+    default:
+      final wc = WindowController.fromWindowId(windowId!);
+      restoreFrame() async {
+        if (offsetLeftTop == null) {
+          await wc.center();
+        } else {
+          final frame = Rect.fromLTWH(
+              offsetLeftTop.dx, offsetLeftTop.dy, size.width, size.height);
+          await wc.setFrame(frame);
+        }
+      }
+      if (lpos.isFullscreen == true) {
+        if (!isMacOS) {
+          await restoreFrame();
+        }
+        // An duration is needed to avoid the window being restored after fullscreen.
+        Future.delayed(Duration(milliseconds: 300), () async {
+          if (kWindowId == windowId) {
+            stateGlobal.setFullscreen(true);
+          } else {
+            // If is not current window, we need to send a fullscreen message to `windowId`
+            DesktopMultiWindow.invokeMethod(
+                windowId, kWindowEventSetFullscreen, 'true');
+          }
+        });
+      } else if (lpos.isMaximized == true) {
+        await restoreFrame();
+        // An duration is needed to avoid the window being restored after maximized.
+        Future.delayed(Duration(milliseconds: 300), () async {
+          await wc.maximize();
+        });
+      } else {
+        await restoreFrame();
+      }
+      break;
+  }
+  return false;
+}
+
+var webInitialLink = "";
+
+/// Initialize uni links for macos/windows
+///
+/// [Availability]
+/// initUniLinks should only be used on macos/windows.
+/// we use dbus for linux currently.
+Future<bool> initUniLinks() async {
+  if (isLinux) {
+    return false;
+  }
+  // check cold boot
+  try {
+    final initialLink = await getInitialLink();
+    print("initialLink: $initialLink");
+    if (initialLink == null || initialLink.isEmpty) {
+      return false;
+    }
+    if (isWeb) {
+      webInitialLink = initialLink;
+      return false;
+    } else {
+      return handleUriLink(uriString: initialLink);
+    }
+  } catch (err) {
+    debugPrintStack(label: "$err");
+    return false;
+  }
+}
+
+/// Listen for uni links.
+///
+/// * handleByFlutter: Should uni links be handled by Flutter.
+///
+/// Returns a [StreamSubscription] which can listen the uni links.
+StreamSubscription? listenUniLinks({handleByFlutter = true}) {
+  if (isLinux || isWeb) {
+    return null;
+  }
+
+  final sub = uriLinkStream.listen((Uri? uri) {
+    debugPrint("A uri was received: $uri. handleByFlutter $handleByFlutter");
+    if (uri != null) {
+      if (handleByFlutter) {
+        handleUriLink(uri: uri);
+      } else {
+        bind.sendUrlScheme(url: uri.toString());
+      }
+    } else {
+      print("uni listen error: uri is empty.");
+    }
+  }, onError: (err) {
+    print("uni links error: $err");
+  });
+  return sub;
+}
+
+enum UriLinkType {
+  remoteDesktop,
+  fileTransfer,
+  viewCamera,
+  portForward,
+  rdp,
+  terminal,
+}
+
+setEnvTerminalAdmin() {
+  bind.mainSetEnv(key: 'IS_TERMINAL_ADMIN', value: 'Y');
+}
+
+// uri link handler
+bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
+  List<String>? args;
+  if (cmdArgs != null && cmdArgs.isNotEmpty) {
+    args = cmdArgs;
+    // rustdesk <uri link>
+    if (args[0].startsWith(bind.mainUriPrefixSync())) {
+      final uri = Uri.tryParse(args[0]);
+      if (uri != null) {
+        args = urlLinkToCmdArgs(uri);
+      }
+    }
+  } else if (uri != null) {
+    args = urlLinkToCmdArgs(uri);
+  } else if (uriString != null) {
+    final uri = Uri.tryParse(uriString);
+    if (uri != null) {
+      args = urlLinkToCmdArgs(uri);
+    }
+  }
+  if (args == null) {
+    return false;
+  }
+
+  if (args.isEmpty) {
+    windowOnTop(null);
+    return true;
+  }
+
+  UriLinkType? type;
+  String? id;
+  String? password;
+  String? switchUuid;
+  bool? forceRelay;
+  for (int i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--connect':
+      case '--play':
+        type = UriLinkType.remoteDesktop;
+        id = args[i + 1];
+        i++;
+        break;
+      case '--file-transfer':
+        type = UriLinkType.fileTransfer;
+        id = args[i + 1];
+        i++;
+        break;
+      case '--view-camera':
+        type = UriLinkType.viewCamera;
+        id = args[i + 1];
+        i++;
+        break;
+      case '--port-forward':
+        type = UriLinkType.portForward;
+        id = args[i + 1];
+        i++;
+        break;
+      case '--rdp':
+        type = UriLinkType.rdp;
+        id = args[i + 1];
+        i++;
+        break;
+      case '--terminal':
+        type = UriLinkType.terminal;
+        id = args[i + 1];
+        i++;
+        break;
+      case '--terminal-admin':
+        setEnvTerminalAdmin();
+        type = UriLinkType.terminal;
+        id = args[i + 1];
+        i++;
+        break;
+      case '--password':
+        password = args[i + 1];
+        i++;
+        break;
+      case '--switch_uuid':
+        switchUuid = args[i + 1];
+        i++;
+        break;
+      case '--relay':
+        forceRelay = true;
+        break;
+      default:
+        break;
+    }
+  }
+  if (type != null && id != null) {
+    switch (type) {
+      case UriLinkType.remoteDesktop:
+        Future.delayed(Duration.zero, () {
+          rustDeskWinManager.newRemoteDesktop(id!,
+              password: password,
+              switchUuid: switchUuid,
+              forceRelay: forceRelay);
+        });
+        break;
+      case UriLinkType.fileTransfer:
+        Future.delayed(Duration.zero, () {
+          rustDeskWinManager.newFileTransfer(id!,
+              password: password, forceRelay: forceRelay);
+        });
+        break;
+      case UriLinkType.viewCamera:
+        Future.delayed(Duration.zero, () {
+          rustDeskWinManager.newViewCamera(id!,
+              password: password, forceRelay: forceRelay);
+        });
+        break;
+      case UriLinkType.portForward:
+        Future.delayed(Duration.zero, () {
+          rustDeskWinManager.newPortForward(id!, false,
+              password: password, forceRelay: forceRelay);
+        });
+        break;
+      case UriLinkType.rdp:
+        Future.delayed(Duration.zero, () {
+          rustDeskWinManager.newPortForward(id!, true,
+              password: password, forceRelay: forceRelay);
+        });
+        break;
+      case UriLinkType.terminal:
+        Future.delayed(Duration.zero, () {
+          rustDeskWinManager.newTerminal(id!,
+              password: password, forceRelay: forceRelay);
+        });
+        break;
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+List<String>? urlLinkToCmdArgs(Uri uri) {
+  String? command;
+  String? id;
+  final options = [
+    "connect",
+    "play",
+    "file-transfer",
+    "view-camera",
+    "port-forward",
+    "rdp",
+    "terminal",
+    "terminal-admin",
+  ];
+  if (uri.authority.isEmpty &&
+      uri.path.split('').every((char) => char == '/')) {
+    return [];
+  } else if (uri.authority == "connection" && uri.path.startsWith("/new/")) {
+    // For compatibility
+    command = '--connect';
+    id = uri.path.substring("/new/".length);
+  } else if (uri.authority == "config") {
+    if (isAndroid || isIOS) {
+      final allowDeepLinkServerSettings =
+          bind.mainGetBuildinOption(key: kOptionAllowDeepLinkServerSettings) ==
+              'Y';
+      if (!allowDeepLinkServerSettings) {
+        debugPrint(
+            "Ignore rustdesk://config because $kOptionAllowDeepLinkServerSettings is not enabled.");
+        // Keep the user-facing error generic; detailed rejection reason is in debug logs.
+        // Delay toast to avoid missing overlay during cold-start deeplink handling.
+        Timer(Duration(seconds: 1), () {
+          showToast(translate('Failed'));
+        });
+        return null;
+      }
+      final config = uri.path.substring("/".length);
+      // add a timer to make showToast work
+      Timer(Duration(seconds: 1), () {
+        importConfig(null, null, config);
+      });
+    }
+    return null;
+  } else if (uri.authority == "password") {
+    if (isAndroid || isIOS) {
+      final allowDeepLinkPassword =
+          bind.mainGetBuildinOption(key: kOptionAllowDeepLinkPassword) == 'Y';
+      if (!allowDeepLinkPassword) {
+        debugPrint(
+            "Ignore rustdesk://password because $kOptionAllowDeepLinkPassword is not enabled.");
+        // Keep the user-facing error generic; detailed rejection reason is in debug logs.
+        // Delay toast to avoid missing overlay during cold-start deeplink handling.
+        Timer(Duration(seconds: 1), () {
+          showToast(translate('Failed'));
+        });
+        return null;
+      }
+      final password = uri.path.substring("/".length);
+      if (password.isNotEmpty) {
+        Timer(Duration(seconds: 1), () async {
+          final ok =
+              await bind.mainSetPermanentPasswordWithResult(password: password);
+          showToast(translate(ok ? 'Successful' : 'Failed'));
+        });
+      }
+    }
+  } else if (options.contains(uri.authority)) {
+    command = '--${uri.authority}';
+    if (uri.path.length > 1) {
+      id = uri.path.substring(1);
+    }
+  } else if (uri.authority.length > 2 &&
+      (uri.path.length <= 1 ||
+          (uri.path == '/r' || uri.path.startsWith('/r@')))) {
+    // rustdesk://<connect-id>
+    // rustdesk://<connect-id>/r
+    // rustdesk://<connect-id>/r@<server>
+    command = '--connect';
+    id = uri.authority;
+    if (uri.path.length > 1) {
+      id = id + uri.path;
+    }
+  }
+
+  var queryParameters =
+      uri.queryParameters.map((k, v) => MapEntry(k.toLowerCase(), v));
+
+  var key = queryParameters["key"];
+  if (id != null) {
+    if (key != null) {
+      id = "$id?key=$key";
+    }
+  }
+
+  if (isMobile && id != null) {
+    final forceRelay = queryParameters["relay"] != null;
+    final password = queryParameters["password"];
+
+    // Determine connection type based on command
+    if (command == '--file-transfer') {
+      connect(Get.context!, id,
+          isFileTransfer: true, forceRelay: forceRelay, password: password);
+    } else if (command == '--view-camera') {
+      connect(Get.context!, id,
+          isViewCamera: true, forceRelay: forceRelay, password: password);
+    } else if (command == '--terminal') {
+      connect(Get.context!, id,
+          isTerminal: true, forceRelay: forceRelay, password: password);
+    } else if (command == 'terminal-admin') {
+      setEnvTerminalAdmin();
+      connect(Get.context!, id,
+          isTerminal: true, forceRelay: forceRelay, password: password);
+    } else {
+      // Default to remote desktop for '--connect', '--play', or direct connection
+      connect(Get.context!, id, forceRelay: forceRelay, password: password);
+    }
+    return null;
+  }
+
+  List<String> args = List.empty(growable: true);
+  if (command != null && id != null) {
+    args.add(command);
+    args.add(id);
+    var param = queryParameters;
+    String? password = param["password"];
+    if (password != null) args.addAll(['--password', password]);
+    String? switch_uuid = param["switch_uuid"];
+    if (switch_uuid != null) args.addAll(['--switch_uuid', switch_uuid]);
+    if (param["relay"] != null) args.add("--relay");
+    return args;
+  }
+
+  return null;
+}
+
+connectMainDesktop(String id,
+    {required bool isFileTransfer,
+    required bool isViewCamera,
+    required bool isTerminal,
+    required bool isTcpTunneling,
+    required bool isRDP,
+    bool? forceRelay,
+    String? password,
+    String? connToken,
+    bool? isSharedPassword}) async {
+  if (isFileTransfer) {
+    await rustDeskWinManager.newFileTransfer(id,
+        password: password,
+        isSharedPassword: isSharedPassword,
+        connToken: connToken,
+        forceRelay: forceRelay);
+  } else if (isViewCamera) {
+    await rustDeskWinManager.newViewCamera(id,
+        password: password,
+        isSharedPassword: isSharedPassword,
+        connToken: connToken,
+        forceRelay: forceRelay);
+  } else if (isTcpTunneling || isRDP) {
+    await rustDeskWinManager.newPortForward(id, isRDP,
+        password: password,
+        isSharedPassword: isSharedPassword,
+        connToken: connToken,
+        forceRelay: forceRelay);
+  } else if (isTerminal) {
+    await rustDeskWinManager.newTerminal(id,
+        password: password,
+        isSharedPassword: isSharedPassword,
+        connToken: connToken,
+        forceRelay: forceRelay);
+  } else {
+    await rustDeskWinManager.newRemoteDesktop(id,
+        password: password,
+        isSharedPassword: isSharedPassword,
+        forceRelay: forceRelay);
+  }
+}
+
+/// Connect to a peer with [id].
+/// If [isFileTransfer], starts a session only for file transfer.
+/// If [isViewCamera], starts a session only for view camera.
+/// If [isTcpTunneling], starts a session only for tcp tunneling.
+/// If [isRDP], starts a session only for rdp.
+connect(BuildContext context, String id,
+    {bool isFileTransfer = false,
+    bool isViewCamera = false,
+    bool isTerminal = false,
+    bool isTcpTunneling = false,
+    bool isRDP = false,
+    bool forceRelay = false,
+    String? password,
+    String? connToken,
+    bool? isSharedPassword}) async {
+  if (id == '') return;
+  if (!isDesktop || desktopType == DesktopType.main) {
+    try {
+      if (Get.isRegistered<IDTextEditingController>()) {
+        final idController = Get.find<IDTextEditingController>();
+        idController.text = formatID(id);
+      }
+      if (Get.isRegistered<TextEditingController>()) {
+        final fieldTextEditingController = Get.find<TextEditingController>();
+        fieldTextEditingController.text = formatID(id);
+      }
+    } catch (_) {}
+  }
+  id = id.replaceAll(' ', '');
+  final oldId = id;
+  id = await bind.mainHandleRelayId(id: id);
+  forceRelay = id != oldId || forceRelay;
+  assert(!(isFileTransfer && isTcpTunneling && isRDP),
+      "more than one connect type");
+
+  if (isDesktop) {
+    if (desktopType == DesktopType.main) {
+      await connectMainDesktop(
+        id,
+        isFileTransfer: isFileTransfer,
+        isViewCamera: isViewCamera,
+        isTerminal: isTerminal,
+        isTcpTunneling: isTcpTunneling,
+        isRDP: isRDP,
+        password: password,
+        isSharedPassword: isSharedPassword,
+        forceRelay: forceRelay,
+      );
+    } else {
+      await rustDeskWinManager.call(WindowType.Main, kWindowConnect, {
+        'id': id,
+        'isFileTransfer': isFileTransfer,
+        'isViewCamera': isViewCamera,
+        'isTerminal': isTerminal,
+        'isTcpTunneling': isTcpTunneling,
+        'isRDP': isRDP,
+        'password': password,
+        'isSharedPassword': isSharedPassword,
+        'forceRelay': forceRelay,
+        'connToken': connToken,
+      });
+    }
+  } else {
+    if (isFileTransfer) {
+      if (isAndroid) {
+        if (!await AndroidPermissionManager.check(kManageExternalStorage)) {
+          if (!await AndroidPermissionManager.request(kManageExternalStorage)) {
+            return;
+          }
+        }
+      }
+      if (isWeb) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (BuildContext context) =>
+                desktop_file_manager.FileManagerPage(
+                    id: id,
+                    password: password,
+                    isSharedPassword: isSharedPassword),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (BuildContext context) => FileManagerPage(
+                id: id,
+                password: password,
+                isSharedPassword: isSharedPassword,
+                forceRelay: forceRelay),
+          ),
+        );
+      }
+    } else if (isViewCamera) {
+      if (isWeb) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (BuildContext context) =>
+                desktop_view_camera.ViewCameraPage(
+              key: ValueKey(id),
+              id: id,
+              toolbarState: ToolbarState(),
+              password: password,
+              isSharedPassword: isSharedPassword,
+            ),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (BuildContext context) => ViewCameraPage(
+                id: id,
+                password: password,
+                isSharedPassword: isSharedPassword,
+                forceRelay: forceRelay),
+          ),
+        );
+      }
+    } else if (isTerminal) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (BuildContext context) => TerminalPage(
+            id: id,
+            password: password,
+            isSharedPassword: isSharedPassword,
+            forceRelay: forceRelay,
+          ),
+        ),
+      );
+    } else {
+      if (isWeb) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (BuildContext context) => desktop_remote.RemotePage(
+              key: ValueKey(id),
+              id: id,
+              toolbarState: ToolbarState(),
+              password: password,
+              isSharedPassword: isSharedPassword,
+            ),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (BuildContext context) => RemotePage(
+                id: id,
+                password: password,
+                isSharedPassword: isSharedPassword,
+                forceRelay: forceRelay),
+          ),
+        );
+      }
+    }
+    stateGlobal.isInMainPage = false;
+  }
+
+  FocusScopeNode currentFocus = FocusScope.of(context);
+  if (!currentFocus.hasPrimaryFocus) {
+    currentFocus.unfocus();
+  }
+}
+
+Map<String, String> getHttpHeaders() {
+  return {
+    'Authorization': 'Bearer ${bind.mainGetLocalOption(key: 'access_token')}'
+  };
+}
+
+// Simple wrapper of built-in types for reference use.
+class SimpleWrapper<T> {
+  T value;
+  SimpleWrapper(this.value);
+}
+
+/// Wakelock manager with reference counting for desktop.
+/// Ensures wakelock is only disabled when all sessions are closed/minimized.
+///
+/// Note: Each isolate has its own WakelockPlus instance with independent assertion.
+/// As long as one isolate has wakelock enabled, the screen stays awake.
+/// This manager handles multiple tabs within the same isolate.
+class WakelockManager {
+  static final Set<UniqueKey> _enabledKeys = {};
+  // Don't use WakelockPlus.enabled, it causes error on Android:
+  // Unhandled Exception: FormatException: Message corrupted
+  //
+  // On Linux, multiple enable() calls create only one inhibit, but each disable()
+  // only releases if _cookie != null. So we need our own _enabled state to avoid
+  // calling disable() when not enabled.
+  // See: https://github.com/fluttercommunity/wakelock_plus/blob/0c74e5bbc6aefac57b6c96bb7ef987705ed559ec/wakelock_plus/lib/src/wakelock_plus_linux_plugin.dart#L48
+  static bool _enabled = false;
+
+  static void enable(UniqueKey key, {bool isServer = false}) {
+    // Check if we should keep awake during outgoing sessions
+    if (!isServer) {
+      final keepAwake =
+          mainGetLocalBoolOptionSync(kOptionKeepAwakeDuringOutgoingSessions);
+      if (!keepAwake) {
+        return; // Don't enable wakelock if user disabled keep awake
+      }
+    }
+    if (isDesktop) {
+      _enabledKeys.add(key);
+    }
+    if (!_enabled) {
+      _enabled = true;
+      WakelockPlus.enable();
+    }
+  }
+
+  static void disable(UniqueKey key) {
+    if (isDesktop) {
+      _enabledKeys.remove(key);
+      if (_enabledKeys.isNotEmpty) {
+        return;
+      }
+    }
+    if (_enabled) {
+      WakelockPlus.disable();
+      _enabled = false;
+    }
+  }
+}
+
+/// call this to reload current window.
+///
+/// [Note]
+/// Must have [RefreshWrapper] on the top of widget tree.
+void reloadCurrentWindow() {
+  if (Get.context != null) {
+    // reload self window
+    RefreshWrapper.of(Get.context!)?.rebuild();
+  } else {
+    debugPrint(
+        "reload current window failed, global BuildContext does not exist");
+  }
+}
+
+/// call this to reload all windows, including main + all sub windows.
+Future<void> reloadAllWindows() async {
+  reloadCurrentWindow();
+  try {
+    final ids = await DesktopMultiWindow.getAllSubWindowIds();
+    for (final id in ids) {
+      DesktopMultiWindow.invokeMethod(id, kWindowActionRebuild);
+    }
+  } on AssertionError {
+    // ignore
+  }
+}
+
+/// Indicate the flutter app is running in portable mode.
+///
+/// [Note]
+/// Portable build is only available on Windows.
+bool isRunningInPortableMode() {
+  if (!isWindows) {
+    return false;
+  }
+  return bool.hasEnvironment(kEnvPortableExecutable);
+}
+
+/// Window status callback
+Future<void> onActiveWindowChanged() async {
+  print(
+      "[MultiWindowHandler] active window changed: ${rustDeskWinManager.getActiveWindows()}");
+  if (rustDeskWinManager.getActiveWindows().isEmpty) {
+    // close all sub windows
+    try {
+      if (isLinux) {
+        await Future.wait([
+          saveWindowPosition(WindowType.Main),
+          rustDeskWinManager.closeAllSubWindows()
+        ]);
+      } else {
+        await rustDeskWinManager.closeAllSubWindows();
+      }
+    } catch (err) {
+      debugPrintStack(label: "$err");
+    } finally {
+      debugPrint("Start closing RustDesk...");
+      await windowManager.setPreventClose(false);
+      await windowManager.close();
+      if (isMacOS) {
+        // If we call without delay, `flutter/macos/Runner/MainFlutterWindow.swift` can handle the "terminate" event.
+        // But the app will not close.
+        //
+        // No idea why we need to delay here, `terminate()` itself is also an async function.
+        //
+        // A quick workaround, use `Timer.periodic` to avoid the app not closing.
+        // Because `await windowManager.close()` and `RdPlatformChannel.instance.terminate()`
+        // may not work since `Flutter 3.24.4`, see the following logs.
+        // A delay will allow the app to close.
+        //
+        //```
+        // embedder.cc (2725): 'FlutterPlatformMessageCreateResponseHandle' returned 'kInvalidArguments'. Engine handle was invalid.
+        // 2024-11-11 11:41:11.546 RustDesk[90272:2567686] Failed to create a FlutterPlatformMessageResponseHandle (2)
+        // embedder.cc (2672): 'FlutterEngineSendPlatformMessage' returned 'kInvalidArguments'. Invalid engine handle.
+        // 2024-11-11 11:41:11.565 RustDesk[90272:2567686] Failed to send message to Flutter engine on channel 'flutter/lifecycle' (2).
+        // ```
+        periodic_immediate(
+            Duration(milliseconds: 30), RdPlatformChannel.instance.terminate);
+      }
+    }
+  }
+}
+
+Timer periodic_immediate(Duration duration, Future<void> Function() callback) {
+  Future.delayed(Duration.zero, callback);
+  return Timer.periodic(duration, (timer) async {
+    await callback();
+  });
+}
+
+/// return a human readable windows version
+WindowsTarget getWindowsTarget(int buildNumber) {
+  if (!isWindows) {
+    return WindowsTarget.naw;
+  }
+  if (buildNumber >= 22000) {
+    return WindowsTarget.w11;
+  } else if (buildNumber >= 10240) {
+    return WindowsTarget.w10;
+  } else if (buildNumber >= 9600) {
+    return WindowsTarget.w8_1;
+  } else if (buildNumber >= 9200) {
+    return WindowsTarget.w8;
+  } else if (buildNumber >= 7601) {
+    return WindowsTarget.w7;
+  } else if (buildNumber >= 6002) {
+    return WindowsTarget.vista;
+  } else {
+    // minimum support
+    return WindowsTarget.xp;
+  }
+}
+
+/// Get windows target build number.
+///
+/// [Note]
+/// Please use this function wrapped with `Platform.isWindows`.
+int getWindowsTargetBuildNumber() {
+  return getWindowsTargetBuildNumber_();
+}
+
+/// Indicating we need to use compatible ui mode.
+///
+/// [Conditions]
+/// - Windows 7, window will overflow when we use frameless ui.
+bool get kUseCompatibleUiMode =>
+    isWindows &&
+    const [WindowsTarget.w7].contains(windowsBuildNumber.windowsVersion);
+
+bool get isWin10 => windowsBuildNumber.windowsVersion == WindowsTarget.w10;
+
+class ServerConfig {
+  late String idServer;
+  late String relayServer;
+  late String apiServer;
+  late String key;
+
+  ServerConfig(
+      {String? idServer, String? relayServer, String? apiServer, String? key}) {
+    this.idServer = idServer?.trim() ?? '';
+    this.relayServer = relayServer?.trim() ?? '';
+    this.apiServer = apiServer?.trim() ?? '';
+    this.key = key?.trim() ?? '';
+  }
+
+  /// decode from shared string (from user shared or rustdesk-server generated)
+  /// also see [encode]
+  /// throw when decoding failure
+  ServerConfig.decode(String msg) {
+    var json = {};
+    try {
+      // back compatible
+      json = jsonDecode(msg);
+    } catch (err) {
+      final input = msg.split('').reversed.join('');
+      final bytes = base64Decode(base64.normalize(input));
+      json = jsonDecode(utf8.decode(bytes, allowMalformed: true));
+    }
+    idServer = json['host'] ?? '';
+    relayServer = json['relay'] ?? '';
+    apiServer = json['api'] ?? '';
+    key = json['key'] ?? '';
+  }
+
+  /// encode to shared string
+  /// also see [ServerConfig.decode]
+  String encode() {
+    Map<String, String> config = {};
+    config['host'] = idServer.trim();
+    config['relay'] = relayServer.trim();
+    config['api'] = apiServer.trim();
+    config['key'] = key.trim();
+    return base64UrlEncode(Uint8List.fromList(jsonEncode(config).codeUnits))
+        .split('')
+        .reversed
+        .join();
+  }
+
+  /// from local options
+  ServerConfig.fromOptions(Map<String, dynamic> options)
+      : idServer = options['custom-rendezvous-server'] ?? "",
+        relayServer = options['relay-server'] ?? "",
+        apiServer = options['api-server'] ?? "",
+        key = options['key'] ?? "";
+}
+
+Widget dialogButton(String text,
+    {required VoidCallback? onPressed,
+    bool isOutline = false,
+    Widget? icon,
+    TextStyle? style,
+    ButtonStyle? buttonStyle}) {
+  if (isDesktop || isWebDesktop) {
+    if (isOutline) {
+      return icon == null
+          ? OutlinedButton(
+              onPressed: onPressed,
+              child: Text(translate(text), style: style),
+            )
+          : OutlinedButton.icon(
+              icon: icon,
+              onPressed: onPressed,
+              label: Text(translate(text), style: style),
+            );
+    } else {
+      return icon == null
+          ? ElevatedButton(
+              style: ElevatedButton.styleFrom(elevation: 0).merge(buttonStyle),
+              onPressed: onPressed,
+              child: Text(translate(text), style: style),
+            )
+          : ElevatedButton.icon(
+              icon: icon,
+              style: ElevatedButton.styleFrom(elevation: 0).merge(buttonStyle),
+              onPressed: onPressed,
+              label: Text(translate(text), style: style),
+            );
+    }
+  } else {
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(
+        translate(text),
+        style: style,
+      ),
+    );
+  }
+}
+
+int versionCmp(String v1, String v2) {
+  return bind.versionToNumber(v: v1) - bind.versionToNumber(v: v2);
+}
+
+String getWindowName({WindowType? overrideType}) {
+  final name = bind.mainGetAppNameSync();
+  switch (overrideType ?? kWindowType) {
+    case WindowType.Main:
+      return name;
+    case WindowType.FileTransfer:
+      return "File Transfer - $name";
+    case WindowType.ViewCamera:
+      return "View Camera - $name";
+    case WindowType.PortForward:
+      return "Port Forward - $name";
+    case WindowType.RemoteDesktop:
+      return "Remote Desktop - $name";
+    default:
+      break;
+  }
+  return name;
+}
+
+String getWindowNameWithId(String id, {WindowType? overrideType}) {
+  return "${DesktopTab.tablabelGetter(id).value} - ${getWindowName(overrideType: overrideType)}";
+}
+
+Future<void> updateSystemWindowTheme() async {
+  // Set system window theme for macOS.
+  final userPreference = MyTheme.getThemeModePreference();
+  if (userPreference != ThemeMode.system) {
+    if (isMacOS) {
+      await RdPlatformChannel.instance.changeSystemWindowTheme(
+          userPreference == ThemeMode.light
+              ? SystemWindowTheme.light
+              : SystemWindowTheme.dark);
+    }
+  }
+}
+
+/// macOS only
+///
+/// Note: not found a general solution for rust based AVFoundation bingding.
+/// [AVFoundation] crate has compile error.
+const kMacOSPermChannel = MethodChannel("org.rustdesk.rustdesk/host");
+
+enum PermissionAuthorizeType {
+  undetermined,
+  authorized,
+  denied, // and restricted
+}
+
+Future<PermissionAuthorizeType> osxCanRecordAudio() async {
+  int res = await kMacOSPermChannel.invokeMethod("canRecordAudio");
+  print(res);
+  if (res > 0) {
+    return PermissionAuthorizeType.authorized;
+  } else if (res == 0) {
+    return PermissionAuthorizeType.undetermined;
+  } else {
+    return PermissionAuthorizeType.denied;
+  }
+}
+
+Future<bool> osxRequestAudio() async {
+  return await kMacOSPermChannel.invokeMethod("requestRecordAudio");
+}
+
+Widget futureBuilder(
+    {required Future? future, required Widget Function(dynamic data) hasData}) {
   return FutureBuilder(
       future: future,
       builder: (BuildContext context, AsyncSnapshot snapshot) {

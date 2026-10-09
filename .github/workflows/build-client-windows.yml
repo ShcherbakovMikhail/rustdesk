@@ -6,6 +6,7 @@ on:
     branches: [sintec-development]
     paths:
       - ".github/workflows/build-client-windows.yml"
+      - "flutter/lib/common.dart"
 
 permissions:
   contents: read
