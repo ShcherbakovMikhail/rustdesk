@@ -302,6 +302,11 @@ fn update_daemon_agent(agent_plist_file: String, update_source_dir: String, sync
     }
 }
 
+// Bundle branding is separate from config, IPC and launchd identity.
+fn macos_app_name() -> String {
+    crate::common::get_app_display_name()
+}
+
 fn correct_app_name(s: &str) -> String {
     let mut s = s.to_owned();
     if let Some(bundleid) = get_bundle_id() {
@@ -309,6 +314,11 @@ fn correct_app_name(s: &str) -> String {
     }
     s = s.replace("rustdesk", &crate::get_app_name().to_lowercase());
     s = s.replace("RustDesk", &crate::get_app_name());
+    let internal_name = crate::get_app_name();
+    let bundle_name = macos_app_name();
+    s = s.replace(&format!("{}.app", internal_name), &format!("{}.app", bundle_name));
+    s = s.replace(&format!("Contents/MacOS/{}", internal_name), &format!("Contents/MacOS/{}", bundle_name));
+    s = s.replace(&format!("{} wants", internal_name), &format!("{} wants", bundle_name));
     s
 }
 
@@ -406,7 +416,7 @@ pub fn uninstall_service(show_new_window: bool, sync: bool) -> bool {
                     if show_new_window {
                         std::process::Command::new("open")
                             .arg("-n")
-                            .arg(&format!("/Applications/{}.app", crate::get_app_name()))
+                            .arg(&format!("/Applications/{}.app", macos_app_name()))
                             .spawn()
                             .ok();
                         // leave open a little time
@@ -914,7 +924,7 @@ pub fn is_installed() -> bool {
         return p
             .to_str()
             .unwrap_or_default()
-            .starts_with(&format!("/Applications/{}.app", crate::get_app_name()));
+            .starts_with(&format!("/Applications/{}.app", macos_app_name()));
     }
     false
 }
@@ -953,7 +963,7 @@ pub fn update_me() -> ResultType<()> {
         bail!("Unknown app directory of current exe file: {:?}", cmd);
     };
 
-    let app_name = crate::get_app_name();
+    let app_name = macos_app_name();
     if is_installed_daemon && !is_service_stopped {
         let agent = format!("{}_server.plist", crate::get_full_name());
         let agent_plist_file = format!("/Library/LaunchAgents/{}", agent);
@@ -1080,7 +1090,7 @@ fn validate_update_tree(path: &Path, framework_root: Option<&Path>) -> ResultTyp
 /// Performs a silent update from a DMG file without any osascript dialog.
 /// Must be called from a process running as root (e.g. the service binary).
 pub fn update_from_dmg_as_root(dmg_path: &str, expected_version: &str) -> ResultType<()> {
-    let app_name = crate::get_app_name();
+    let app_name = macos_app_name();
     if app_name.is_empty()
         || !app_name
             .bytes()
@@ -1103,8 +1113,8 @@ pub fn update_from_dmg_as_root(dmg_path: &str, expected_version: &str) -> Result
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&tmp_dir, std::fs::Permissions::from_mode(0o700))?;
     }
-    let agent_plist = format!("/Library/LaunchAgents/com.carriez.{}_server.plist", app_name);
-    let daemon_plist = format!("/Library/LaunchDaemons/com.carriez.{}_service.plist", app_name);
+    let agent_plist = format!("/Library/LaunchAgents/{}_server.plist", crate::get_full_name());
+    let daemon_plist = format!("/Library/LaunchDaemons/{}_service.plist", crate::get_full_name());
 
     log::info!("[root-update] Starting silent root update from {}", dmg_path);
     // Check sessions before extracting to avoid unnecessary work
@@ -1235,8 +1245,8 @@ pub fn update_from_dmg_as_root(dmg_path: &str, expected_version: &str) -> Result
     // Write a shell script that runs detached after this function returns.
     // We cannot directly replace /Applications/RustDesk.app while it is running,
     // so we spawn a script that waits, kills processes, copies, and restarts.
-    let daemon_label = format!("com.carriez.{}_service", app_name);
-    let agent_label = format!("com.carriez.{}_server", app_name);
+    let daemon_label = format!("{}_service", crate::get_full_name());
+    let agent_label = format!("{}_server", crate::get_full_name());
     let script_path = format!("{}/rustdesk_update.sh", tmp_dir);
     let script = format!(
         r#"#!/bin/sh
@@ -1436,7 +1446,7 @@ capture_agent_snapshot() {{
     for agent_uid in {uid_list}; do
         agent_pid=$(agent_pid_for_uid "$agent_uid" || true)
         [ -n "$agent_pid" ] || return 1
-        [ -S "/tmp/{app_name}-$agent_uid/ipc" ] || return 1
+        [ -S "/tmp/{internal_app_name}-$agent_uid/ipc" ] || return 1
         kill -0 "$agent_pid" 2>/dev/null || return 1
         agent_process_matches "$agent_uid" "$agent_pid" || return 1
         agent_pids="$agent_pids $agent_uid:$agent_pid"
@@ -1449,7 +1459,7 @@ agent_snapshot_stable() {{
         expected_pid=$(printf '%s\n' "$agent_entry" | cut -d: -f2)
         current_pid=$(agent_pid_for_uid "$agent_uid" || true)
         [ -n "$current_pid" ] && [ "$current_pid" = "$expected_pid" ] || return 1
-        [ -S "/tmp/{app_name}-$agent_uid/ipc" ] || return 1
+        [ -S "/tmp/{internal_app_name}-$agent_uid/ipc" ] || return 1
         kill -0 "$current_pid" 2>/dev/null || return 1
         agent_process_matches "$agent_uid" "$current_pid" || return 1
     done
@@ -1471,7 +1481,7 @@ daemon_snapshot_stable() {{
     [ -n "$daemon_pid" ] && \
         [ "$stable_daemon_pid" = "$daemon_pid" ] && \
         printf '%s\n' "$stable_daemon_info" | grep -E '^[[:space:]]*state = running[[:space:]]*$' >/dev/null && \
-        [ -S "/tmp/{app_name}-service/ipc_service" ] && \
+        [ -S "/tmp/{internal_app_name}-service/ipc_service" ] && \
         kill -0 "$daemon_pid" 2>/dev/null
 }}
 daemon_ready() {{
@@ -1481,7 +1491,7 @@ daemon_ready() {{
         daemon_pid=$(printf '%s\n' "$daemon_info" | awk '/^[[:space:]]*pid = / {{print $3; exit}}')
         if [ -n "$daemon_pid" ] && \
            printf '%s\n' "$daemon_info" | grep -E '^[[:space:]]*state = running[[:space:]]*$' >/dev/null && \
-           [ -S "/tmp/{app_name}-service/ipc_service" ] && \
+           [ -S "/tmp/{internal_app_name}-service/ipc_service" ] && \
            kill -0 "$daemon_pid" 2>/dev/null; then
             sleep 2
             daemon_snapshot_stable && return 0
@@ -1713,6 +1723,7 @@ echo "[root-update] Done!" >> {tmp_dir}/rustdesk_root_update.log
 rm -rf {tmp_dir}
 "#,
         app_name = app_name,
+        internal_app_name = crate::get_app_name(),
         app_bundle = app_bundle,
         src_app = src_app,
         uid_list = uid_list,
@@ -1845,7 +1856,7 @@ fn extract_dmg_inner(dmg_path: &str, target_dir: &str) -> ResultType<()> {
     }
     let _guard = DmgGuard(mount_point.clone());
 
-    let app_name = format!("{}.app", crate::get_app_name());
+    let app_name = format!("{}.app", macos_app_name());
     let src_path = format!("{}/{}", mount_point, app_name);
     let dest_path = format!("{}/{}", target_dir, app_name);
 
@@ -1873,7 +1884,7 @@ fn extract_dmg_inner(dmg_path: &str, target_dir: &str) -> ResultType<()> {
 }
 
 fn update_extracted(target_dir: &str) -> ResultType<()> {
-    let app_name = crate::get_app_name();
+    let app_name = macos_app_name();
     let exe_path = format!(
         "{}/{}.app/Contents/MacOS/{}",
         target_dir, app_name, app_name

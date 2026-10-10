@@ -1004,6 +1004,16 @@ pub fn get_app_name() -> String {
     hbb_common::config::APP_NAME.read().unwrap().clone()
 }
 
+// Display branding does not change config paths, URI identity or IPC.
+pub fn get_app_display_name() -> String {
+    #[cfg(all(any(windows, target_os = "macos"), not(feature = "agent")))]
+    {
+        return "Sintec.RD".to_owned();
+    }
+    #[cfg(not(all(any(windows, target_os = "macos"), not(feature = "agent"))))]
+    get_app_name()
+}
+
 #[inline]
 pub fn is_rustdesk() -> bool {
     hbb_common::config::APP_NAME.read().unwrap().eq("RustDesk")

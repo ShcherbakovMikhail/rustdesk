@@ -4187,7 +4187,8 @@ List<String> getPrinterNames() {
   }
   try {
     final List<dynamic> printerNamesList = jsonDecode(printerNamesJson);
-    final appPrinterName = '$appName Printer';
+    // Keep the signed Windows printer driver's identity independent of UI branding.
+    final appPrinterName = isWindows ? 'RustDesk Printer' : '$appName Printer';
     return printerNamesList
         .map((e) => e.toString())
         .where((name) => name != appPrinterName)

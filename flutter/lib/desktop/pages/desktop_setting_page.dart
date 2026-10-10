@@ -2482,7 +2482,10 @@ class _AboutState extends State<_About> {
       final scrollController = ScrollController();
       return SingleChildScrollView(
         controller: scrollController,
-        child: _Card(title: translate('About RustDesk'), children: [
+        child: _Card(
+        // shcherbakov.m - Брендирование страницы О приграмме
+        title: translate('About RustDesk').replaceAll('RustDesk', 'Sintec.RD'),
+        children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2490,7 +2493,7 @@ class _AboutState extends State<_About> {
                 height: 8.0,
               ),
               SelectionArea(
-                  child: Text('${translate('Version')}: $version - Sintec LLC Edition')
+                  child: Text('${translate('Version')}: $version')
                       .marginSymmetric(vertical: 4.0)),
               SelectionArea(
                   child: Text('${translate('Build Date')}: $buildDate')
@@ -2530,7 +2533,10 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Sintec LLC.\n$license',
+                            'Sintec.RD — корпоративная сборка приложения \n'
+                            'на базе RustDesk от Purslane Tech Pte. Ltd.\n'
+                            'Copyright © 2026 Purslane Tech Pte. Ltd.\n'
+                            'Modifications © 2026 Sintec LLC.\n$license',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(

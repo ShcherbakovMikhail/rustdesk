@@ -21,7 +21,7 @@ name = "service"
 path = "src/service.rs"
 
 [[bin]]
-name = "rustdesk-agent"
+name = "sintec-rd-agent"
 path = "src/agent.rs"
 required-features = ["agent"]
 
@@ -217,9 +217,10 @@ exclude = ["vdi/host", "examples/custom_plugin"]
 libxdo-sys = { path = "libs/libxdo-sys-stub" }
 
 [package.metadata.winres]
-LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. All rights reserved."
-ProductName = "RustDesk"
-FileDescription = "RustDesk Remote Desktop"
+CompanyName = "Sintec LLC."
+LegalCopyright = "Copyright © 2026 Purslane Tech Pte. Ltd. Modifications © 2026 Sintec LLC."
+ProductName = "Sintec.RD"
+FileDescription = "Sintec.RD Remote Desktop"
 OriginalFilename = "rustdesk.exe"
 
 [target.'cfg(target_os="windows")'.build-dependencies]
