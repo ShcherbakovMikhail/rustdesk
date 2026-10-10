@@ -27,17 +27,6 @@ Sintec.RD — корпоративная сборка приложения уд�
 
 [**СБОРКИ GITHUB ACTIONS**](https://github.com/ShcherbakovMikhail/Sintec.RD/actions)
 
-Пакеты оригинального RustDesk (не Sintec.RD):
-
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.carriez.flutter_hbb)
-[<img src="https://flathub.org/api/badge?svg&locale=en"
-    alt="Get it on Flathub"
-    height="80">](https://flathub.org/apps/com.rustdesk.RustDesk)
-
-## [Сборка](https://rustdesk.com/docs/ru/dev/build/)
-
 ## Скриншоты
 
 Ниже представлены иллюстрации оригинального RustDesk; оформление Sintec.RD отличается.
