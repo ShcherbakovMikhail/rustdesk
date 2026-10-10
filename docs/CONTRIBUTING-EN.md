@@ -1,8 +1,9 @@
-# Współtworzenie RustDesk
+# Contributing to RustDesk
 
-RustDesk z zadowoleniem przyjmuje wkład od każdego. Oto wytyczne, jeśli chcesz nam pomóc:
+RustDesk welcomes contributions from everyone. Here are the guidelines if you are
+thinking of helping us:
 
-## Współtwórcy
+## Contributions
 
 Contributions to RustDesk or its dependencies should be made in the form of GitHub
 pull requests. Each pull request will be reviewed by a core contributor
@@ -36,10 +37,10 @@ efforts from contributors on the same issue.
 
 For specific git instructions, see [GitHub workflow 101](https://github.com/servo/servo/wiki/GitHub-workflow).
 
-## Kodeks postępowania
+## Conduct
 
-[Kodeks postępowania](CODE_OF_CONDUCT-PL.md)
+https://github.com/rustdesk/rustdesk/blob/master/docs/CODE_OF_CONDUCT.md
 
-## Komunikacja
+## Communication
 
 RustDesk contributors frequent the [Discord](https://discord.gg/nDceKgxnkV).

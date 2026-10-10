@@ -1,46 +1,45 @@
-# Contributing to RustDesk
+# Вклад в RustDesk
 
-RustDesk welcomes contributions from everyone. Here are the guidelines if you are
-thinking of helping us:
+RustDesk приветствует вклад каждого. 
+Ниже приведены рекомендации, если вы собираетесь помочь нам:
 
-## Contributions
+## Вклад в развитие
 
-Contributions to RustDesk or its dependencies should be made in the form of GitHub
-pull requests. Each pull request will be reviewed by a core contributor
-(someone with permission to land patches) and either landed in the main tree or
-given feedback for changes that would be required. All contributions should
-follow this format, even those from core contributors.
+Вклады в развитие RustDesk или его зависимости должны быть сделаны в виде `pull request` на GitHub.
+Каждый такой `pull request` будет рассмотрен основным участником (кем-то, у кого есть разрешение
+на влив исправлений) и либо помещен в основное дерево, либо Вам будет дан отзыв о необходимых правках.
+Все материалы должны соответствовать этому формату, даже те, которые поступают от основных авторов.
 
-Should you wish to work on an issue, please claim it first by commenting on
-the GitHub issue that you want to work on it. This is to prevent duplicated
-efforts from contributors on the same issue.
+Если вы хотите поработать над какой-либо проблемой, то пожалуйста, сначала напишите об этом,
+создав `issue` на GitHub, и описав, над чем вы хотите поработать. Это делается для того, 
+чтобы предотвратить дублирование усилий участников по одному и тому же вопросу.
 
-## Pull Request Checklist
+## Контрольный список для Ваших `pull request`
 
-- Branch from the master branch and, if needed, rebase to the current master
-  branch before submitting your pull request. If it doesn't merge cleanly with
-  master you may be asked to rebase your changes.
+- Ответвляйтесь от главной ветки и, при необходимости, делайте `rebase` в текущую `master`
+  ветку перед отправкой `pull request`. При наличии конфликтов слияния вам будет
+  предложено их устранить, возможно при помощи того же `rebase`.
 
-- Commits should be as small as possible, while ensuring that each commit is
-  correct independently (i.e., each commit should compile and pass tests).
+- Коммиты должны быть, по возможности, небольшими, при этом гарантируя, что каждый
+  коммит является независимо правильным (т.е., каждый коммит должен компилироваться и проходить тесты).
 
-- Commits should be accompanied by a Developer Certificate of Origin
-  (http://developercertificate.org) sign-off, which indicates that you (and
-  your employer if applicable) agree to be bound by the terms of the
-  [project license](../LICENCE). In git, this is the `-s` option to `git commit`
+- Коммиты должны сопровождаться подписью `Developer Certificate of Origin`
+  (http://developercertificate.org), которая укажет на то, что вы (и ваш работодатель,
+  если это применимо) согласны соблюдать условия [лицензии проекта](../LICENCE).
+  В `git` это флаг `-s` при использовании `git commit`
 
-- If your patch is not getting reviewed or you need a specific person to review
-  it, you can @-reply a reviewer asking for a review in the pull request or a
-  comment, or you can ask for a review via [email](mailto:info@rustdesk.com).
+- Если ваш патч не проходит рецензирование или вам нужно, 
+  чтобы его проверил конкретный человек, Вы можете ответить рецензенту через `@`,
+  в обсуждениях вашего `pull request` или Вы можете запросить рецензию через[email](mailto:info@rustdesk.com).
 
-- Add tests relevant to the fixed bug or new feature.
+- Добавьте тесты, относящиеся к исправленной ошибке или новой функции.
 
-For specific git instructions, see [GitHub workflow 101](https://github.com/servo/servo/wiki/GitHub-workflow).
+Для получения конкретных инструкций `git` см. [GitHub workflow 101](https://github.com/servo/servo/wiki/Github-workflow).
 
-## Conduct
+## Правила поведения участников и вкладчиков
 
-https://github.com/rustdesk/rustdesk/blob/master/docs/CODE_OF_CONDUCT.md
+Нормы поведения внутри сообщества подробно описаны [здесь](CODE_OF_CONDUCT-RU.md).
 
-## Communication
+## Общение
 
-RustDesk contributors frequent the [Discord](https://discord.gg/nDceKgxnkV).
+RustDesk контрибьюторы могут посетить [Discord](https://discord.gg/nDceKgxnkV).

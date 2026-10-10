@@ -2584,8 +2584,8 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Sintec.RD — корпоративная сборка приложения \n'
-                            'на базе RustDesk от Purslane Tech Pte. Ltd.\n'
+                            'Sintec.RD — корпоративная сборка приложения на базе RustDesk\n'
+                            'от Purslane Tech Pte. Ltd.\n'
                             'Copyright © 2026 Purslane Tech Pte. Ltd.\n'
                             'Modifications © 2026 Sintec LLC.\n$license',
                             style: const TextStyle(color: Colors.white),

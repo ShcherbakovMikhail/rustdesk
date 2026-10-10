@@ -13,19 +13,17 @@
 
 Sintec.RD is a corporate remote-access build based on [RustDesk](https://github.com/rustdesk/rustdesk). It includes a preconfigured organization server and public key, custom branding, and installers. The Windows distribution includes an EXE/MSI client and an Enterprise Agent.
 
-![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
-
 ## Screenshots
 
-The illustrations below show the original RustDesk; Sintec.RD uses different branding.
+### Sintec.RD main window
 
-![Connection Manager](https://github.com/rustdesk/rustdesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
+![Sintec.RD main window](screenshots/sintec-rd-main.png)
 
-![Connected to a Windows PC](https://github.com/rustdesk/rustdesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
+### Remote desktop connection
 
-![File Transfer](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
+![Remote desktop in Sintec.RD](screenshots/sintec-rd-remote.png)
 
-![TCP Tunneling](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
+Workstation IDs, the one-time password, and computer names are obscured in these screenshots.
 
 ## License
 

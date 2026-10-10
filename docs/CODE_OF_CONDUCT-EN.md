@@ -1,7 +1,7 @@
 
-# Kod postępowania Contributor Covenant Code of Conduct
+# Contributor Covenant Code of Conduct
 
-## Nasza przysięga
+## Our Pledge
 
 We as members, contributors, and leaders pledge to make participation in our
 community a harassment-free experience for everyone, regardless of age, body
@@ -13,7 +13,7 @@ and orientation.
 We pledge to act and interact in ways that contribute to an open, welcoming,
 diverse, inclusive, and healthy community.
 
-## Nasze standardy
+## Our Standards
 
 Examples of behavior that contributes to a positive environment for our
 community include:
@@ -107,7 +107,7 @@ Violating these terms may lead to a permanent ban.
 ### 4. Permanent Ban
 
 **Community Impact**: Demonstrating a pattern of violation of community
-standards, including sustained inappropriate behavior,  harassment of an
+standards, including sustained inappropriate behavior, harassment of an
 individual, or aggression toward or disparagement of classes of individuals.
 
 **Consequence**: A permanent ban from any sort of public interaction within
