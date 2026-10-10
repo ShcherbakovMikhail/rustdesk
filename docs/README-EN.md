@@ -11,19 +11,9 @@
 > **Misuse Disclaimer:** <br>
 > The developers of RustDesk do not condone or support any unethical or illegal use of this software. Misuse, such as unauthorized access, control or invasion of privacy, is strictly against our guidelines. The authors are not responsible for any misuse of the application.
 
-Original RustDesk project resources:
-
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-Advanced%20Features-blue)](https://rustdesk.com/pricing.html)
-
 Sintec.RD is a corporate remote-access build based on [RustDesk](https://github.com/rustdesk/rustdesk). It includes a preconfigured organization server and public key, custom branding, and installers. The Windows distribution includes an EXE/MSI client and an Enterprise Agent.
 
 ![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
-
-[**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
-
-[**BINARY DOWNLOAD**](https://github.com/ShcherbakovMikhail/Sintec.RD/releases)
-
-[**GITHUB ACTIONS BUILDS**](https://github.com/ShcherbakovMikhail/Sintec.RD/actions)
 
 ## Screenshots
 
