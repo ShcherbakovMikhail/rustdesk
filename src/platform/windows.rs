@@ -3758,6 +3758,7 @@ if exist \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{WI
     } else {
         format!("
 sc create {WINDOWS_SERVICE_NAME} binpath= \"\\\"{exe}\\\" --service\" start= auto DisplayName= \"{WINDOWS_CLIENT_DISPLAY_NAME}\"
+sc description {WINDOWS_SERVICE_NAME} \"Sintec.RD remote support service\"
 sc start {WINDOWS_SERVICE_NAME}
 ",
     )

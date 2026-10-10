@@ -557,6 +557,27 @@ UINT __stdcall CreateStartService(__in MSIHANDLE hInstall)
         TryCreateStartServiceByShell(svcName, svcBinary, szSvcDisplayName);
     }
 
+    // The service created through MSI must have the same description as the EXE installer.
+    if (wcscmp(svcName, L"sintec-rd") == 0) {
+        SC_HANDLE manager = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT);
+        if (manager) {
+            SC_HANDLE service = OpenServiceW(manager, svcName, SERVICE_CHANGE_CONFIG);
+            if (service) {
+                wchar_t text[] = L"Sintec.RD remote support service";
+                SERVICE_DESCRIPTIONW description = { text };
+                if (!ChangeServiceConfig2W(service, SERVICE_CONFIG_DESCRIPTION, &description)) {
+                    WcaLog(LOGMSG_STANDARD, "Failed to set service description: %lu", GetLastError());
+                }
+                CloseServiceHandle(service);
+            } else {
+                WcaLog(LOGMSG_STANDARD, "Failed to open service for description: %lu", GetLastError());
+            }
+            CloseServiceHandle(manager);
+        } else {
+            WcaLog(LOGMSG_STANDARD, "Failed to open service manager for description: %lu", GetLastError());
+        }
+    }
+
 LExit:
     if (pwzData) {
         ReleaseStr(pwzData);

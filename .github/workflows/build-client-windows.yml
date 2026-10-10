@@ -9,6 +9,8 @@ on:
       - "flutter/lib/common.dart"
       - "libs/portable/Cargo.toml"
       - "src/lang.rs"
+      - "src/platform/windows.rs"
+      - "res/msi/CustomActions/CustomActions.cpp"
 
 permissions:
   contents: read
