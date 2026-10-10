@@ -5,10 +5,12 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = RustDesk
+PRODUCT_NAME = Sintec.RD
+// Keep the Swift module stable: MainMenu.xib refers to this module.
+PRODUCT_MODULE_NAME = RustDesk
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.carriez.flutterHbb
+PRODUCT_BUNDLE_IDENTIFIER = ru.sintec.rd
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 Purslane Tech Pte. Ltd. Modifications © 2026 Sintec LLC.

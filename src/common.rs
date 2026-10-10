@@ -1006,11 +1006,11 @@ pub fn get_app_name() -> String {
 
 // Display branding does not change config paths, URI identity or IPC.
 pub fn get_app_display_name() -> String {
-    #[cfg(all(windows, not(feature = "agent")))]
+    #[cfg(all(any(windows, target_os = "macos"), not(feature = "agent")))]
     {
         return "Sintec.RD".to_owned();
     }
-    #[cfg(not(all(windows, not(feature = "agent"))))]
+    #[cfg(not(all(any(windows, target_os = "macos"), not(feature = "agent"))))]
     get_app_name()
 }
 
